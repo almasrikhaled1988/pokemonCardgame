@@ -7,7 +7,17 @@ export const POKEMON_DATA = {
         { id: 'f2-1', name: 'Ninetales', hp: 90, element: 'fire', stage: 'stage1', evolvesFrom: 'Vulpix', attacks: [{ name: 'Fire Blast', damage: 70, energyCost: 3 }] },
         { id: 'f3', name: 'Growlithe', hp: 60, element: 'fire', stage: 'basic', attacks: [{ name: 'Bite', damage: 20, energyCost: 1 }, { name: 'Flamethrower', damage: 50, energyCost: 3 }] },
         { id: 'f3-1', name: 'Arcanine', hp: 100, element: 'fire', stage: 'stage1', evolvesFrom: 'Growlithe', attacks: [{ name: 'Extreme Speed', damage: 80, energyCost: 3 }] },
-        { id: 'f4', name: 'Ponyta', hp: 60, element: 'fire', stage: 'basic', attacks: [{ name: 'Stomp', damage: 20, energyCost: 2 }, { name: 'Fire Spin', damage: 40, energyCost: 3 }] }
+        { id: 'f4', name: 'Ponyta', hp: 60, element: 'fire', stage: 'basic', attacks: [{ name: 'Stomp', damage: 20, energyCost: 2 }, { name: 'Fire Spin', damage: 40, energyCost: 3 }] },
+        { id: 'f4-1', name: 'Rapidash', hp: 90, element: 'fire', stage: 'stage1', evolvesFrom: 'Ponyta', attacks: [{ name: 'Flare Blitz', damage: 70, energyCost: 3 }] },
+        { id: 'f5', name: 'Magby', hp: 40, element: 'fire', stage: 'basic', attacks: [{ name: 'Coal Glee', damage: 10, energyCost: 1 }] },
+        { id: 'f5-1', name: 'Magmar', hp: 80, element: 'fire', stage: 'stage1', evolvesFrom: 'Magby', attacks: [{ name: 'Fire Punch', damage: 40, energyCost: 2 }] },
+        { id: 'f6', name: 'Cyndaquil', hp: 50, element: 'fire', stage: 'basic', attacks: [{ name: 'Tackle', damage: 10, energyCost: 1 }, { name: 'Ember', damage: 30, energyCost: 2 }] },
+        { id: 'f6-1', name: 'Quilava', hp: 80, element: 'fire', stage: 'stage1', evolvesFrom: 'Cyndaquil', attacks: [{ name: 'Flame Wheel', damage: 40, energyCost: 2 }] },
+        { id: 'f6-2', name: 'Typhlosion', hp: 110, element: 'fire', stage: 'stage2', evolvesFrom: 'Quilava', attacks: [{ name: 'Blast Burn', damage: 90, energyCost: 4 }] },
+        { id: 'f7', name: 'Entei', hp: 110, element: 'fire', stage: 'basic', attacks: [{ name: 'Fire Fang', damage: 40, energyCost: 2 }, { name: 'Sacred Fire', damage: 80, energyCost: 4 }] },
+        { id: 'f8', name: 'Torchic', hp: 50, element: 'fire', stage: 'basic', attacks: [{ name: 'Peck', damage: 10, energyCost: 1 }, { name: 'Ember', damage: 30, energyCost: 2 }] },
+        { id: 'f8-1', name: 'Combusken', hp: 80, element: 'fire', stage: 'stage1', evolvesFrom: 'Torchic', attacks: [{ name: 'Double Kick', damage: 40, energyCost: 2 }] },
+        { id: 'f8-2', name: 'Blaziken', hp: 120, element: 'fire', stage: 'stage2', evolvesFrom: 'Combusken', attacks: [{ name: 'Blaze Kick', damage: 100, energyCost: 4 }] }
     ],
     water: [
         { id: 'w1', name: 'Squirtle', hp: 60, element: 'water', stage: 'basic', attacks: [{ name: 'Tackle', damage: 10, energyCost: 1 }, { name: 'Water Gun', damage: 20, energyCost: 2 }] },
@@ -17,7 +27,17 @@ export const POKEMON_DATA = {
         { id: 'w2-1', name: 'Golduck', hp: 90, element: 'water', stage: 'stage1', evolvesFrom: 'Psyduck', attacks: [{ name: 'Hyper Beam', damage: 60, energyCost: 3 }] },
         { id: 'w3', name: 'Magikarp', hp: 30, element: 'water', stage: 'basic', attacks: [{ name: 'Splash', damage: 0, energyCost: 1 }, { name: 'Flail', damage: 10, energyCost: 1 }] },
         { id: 'w3-1', name: 'Gyarados', hp: 130, element: 'water', stage: 'stage1', evolvesFrom: 'Magikarp', attacks: [{ name: 'Dragon Rage', damage: 50, energyCost: 3 }, { name: 'Hydro Pump', damage: 100, energyCost: 4 }] },
-        { id: 'w4', name: 'Poliwag', hp: 50, element: 'water', stage: 'basic', attacks: [{ name: 'Bubble', damage: 10, energyCost: 1 }, { name: 'Water Gun', damage: 20, energyCost: 2 }] }
+        { id: 'w4', name: 'Poliwag', hp: 50, element: 'water', stage: 'basic', attacks: [{ name: 'Bubble', damage: 10, energyCost: 1 }, { name: 'Water Gun', damage: 20, energyCost: 2 }] },
+        { id: 'w4-1', name: 'Poliwhirl', hp: 80, element: 'water', stage: 'stage1', evolvesFrom: 'Poliwag', attacks: [{ name: 'Double Slap', damage: 30, energyCost: 2 }] },
+        { id: 'w4-2', name: 'Poliwrath', hp: 120, element: 'water', stage: 'stage2', evolvesFrom: 'Poliwhirl', attacks: [{ name: 'Submission', damage: 70, energyCost: 3 }] },
+        { id: 'w5', name: 'Seel', hp: 70, element: 'water', stage: 'basic', attacks: [{ name: 'Headbutt', damage: 20, energyCost: 2 }] },
+        { id: 'w5-1', name: 'Dewgong', hp: 100, element: 'water', stage: 'stage1', evolvesFrom: 'Seel', attacks: [{ name: 'Aurora Beam', damage: 50, energyCost: 3 }] },
+        { id: 'w6', name: 'Lapras', hp: 110, element: 'water', stage: 'basic', attacks: [{ name: 'Water Gun', damage: 30, energyCost: 2 }, { name: 'Hydro Pump', damage: 80, energyCost: 4 }] },
+        { id: 'w7', name: 'Totodile', hp: 60, element: 'water', stage: 'basic', attacks: [{ name: 'Scratch', damage: 10, energyCost: 1 }, { name: 'Water Gun', damage: 20, energyCost: 2 }] },
+        { id: 'w7-1', name: 'Croconaw', hp: 80, element: 'water', stage: 'stage1', evolvesFrom: 'Totodile', attacks: [{ name: 'Bite', damage: 40, energyCost: 2 }] },
+        { id: 'w7-2', name: 'Feraligatr', hp: 120, element: 'water', stage: 'stage2', evolvesFrom: 'Croconaw', attacks: [{ name: 'Hydro Cannon', damage: 100, energyCost: 4 }] },
+        { id: 'w8', name: 'Chinchou', hp: 50, element: 'water', stage: 'basic', attacks: [{ name: 'Spark', damage: 20, energyCost: 1 }] },
+        { id: 'w8-1', name: 'Lanturn', hp: 90, element: 'water', stage: 'stage1', evolvesFrom: 'Chinchou', attacks: [{ name: 'Hydro Pump', damage: 60, energyCost: 3 }] }
     ],
     grass: [
         { id: 'g1', name: 'Bulbasaur', hp: 60, element: 'grass', stage: 'basic', attacks: [{ name: 'Tackle', damage: 10, energyCost: 1 }, { name: 'Vine Whip', damage: 30, energyCost: 2 }] },
@@ -25,8 +45,18 @@ export const POKEMON_DATA = {
         { id: 'g1-2', name: 'Venusaur', hp: 140, element: 'grass', stage: 'stage2', evolvesFrom: 'Ivysaur', attacks: [{ name: 'Frenzy Plant', damage: 100, energyCost: 4 }] },
         { id: 'g2', name: 'Oddish', hp: 50, element: 'grass', stage: 'basic', attacks: [{ name: 'Absorb', damage: 10, energyCost: 1 }, { name: 'Acid', damage: 20, energyCost: 2 }] },
         { id: 'g2-1', name: 'Gloom', hp: 80, element: 'grass', stage: 'stage1', evolvesFrom: 'Oddish', attacks: [{ name: 'Poison Powder', damage: 30, energyCost: 2 }] },
+        { id: 'g2-2', name: 'Vileplume', hp: 120, element: 'grass', stage: 'stage2', evolvesFrom: 'Gloom', attacks: [{ name: 'Solar Beam', damage: 80, energyCost: 3 }] },
         { id: 'g3', name: 'Bellsprout', hp: 50, element: 'grass', stage: 'basic', attacks: [{ name: 'Vine Whip', damage: 10, energyCost: 1 }, { name: 'Razor Leaf', damage: 30, energyCost: 2 }] },
-        { id: 'g3-1', name: 'Weepinbell', hp: 70, element: 'grass', stage: 'stage1', evolvesFrom: 'Bellsprout', attacks: [{ name: 'Acid', damage: 40, energyCost: 2 }] }
+        { id: 'g3-1', name: 'Weepinbell', hp: 70, element: 'grass', stage: 'stage1', evolvesFrom: 'Bellsprout', attacks: [{ name: 'Acid', damage: 40, energyCost: 2 }] },
+        { id: 'g3-2', name: 'Victreebel', hp: 110, element: 'grass', stage: 'stage2', evolvesFrom: 'Weepinbell', attacks: [{ name: 'Leaf Storm', damage: 90, energyCost: 4 }] },
+        { id: 'g4', name: 'Exeggcute', hp: 50, element: 'grass', stage: 'basic', attacks: [{ name: 'Hypnosis', damage: 0, energyCost: 1 }, { name: 'Seed Bomb', damage: 20, energyCost: 2 }] },
+        { id: 'g4-1', name: 'Exeggutor', hp: 100, element: 'grass', stage: 'stage1', evolvesFrom: 'Exeggcute', attacks: [{ name: 'Solar Beam', damage: 70, energyCost: 3 }] },
+        { id: 'g5', name: 'Tangela', hp: 70, element: 'grass', stage: 'basic', attacks: [{ name: 'Bind', damage: 20, energyCost: 2 }] },
+        { id: 'g5-1', name: 'Tangrowth', hp: 120, element: 'grass', stage: 'stage1', evolvesFrom: 'Tangela', attacks: [{ name: 'Giga Drain', damage: 60, energyCost: 3 }] },
+        { id: 'g6', name: 'Celebi', hp: 70, element: 'grass', stage: 'basic', attacks: [{ name: 'Psychic', damage: 30, energyCost: 2 }, { name: 'Leaf Storm', damage: 70, energyCost: 4 }] },
+        { id: 'g7', name: 'Chikorita', hp: 60, element: 'grass', stage: 'basic', attacks: [{ name: 'Tackle', damage: 10, energyCost: 1 }, { name: 'Razor Leaf', damage: 30, energyCost: 2 }] },
+        { id: 'g7-1', name: 'Bayleef', hp: 80, element: 'grass', stage: 'stage1', evolvesFrom: 'Chikorita', attacks: [{ name: 'Solar Beam', damage: 50, energyCost: 3 }] },
+        { id: 'g7-2', name: 'Meganium', hp: 130, element: 'grass', stage: 'stage2', evolvesFrom: 'Bayleef', attacks: [{ name: 'Solar Blast', damage: 90, energyCost: 4 }] }
     ],
     electric: [
         { id: 'e1', name: 'Pikachu', hp: 50, element: 'electric', stage: 'basic', attacks: [{ name: 'Quick Attack', damage: 10, energyCost: 1 }, { name: 'Thunderbolt', damage: 40, energyCost: 3 }] },
@@ -34,7 +64,17 @@ export const POKEMON_DATA = {
         { id: 'e2', name: 'Magnemite', hp: 40, element: 'electric', stage: 'basic', attacks: [{ name: 'Thundershock', damage: 10, energyCost: 1 }, { name: 'Spark', damage: 20, energyCost: 2 }] },
         { id: 'e2-1', name: 'Magneton', hp: 80, element: 'electric', stage: 'stage1', evolvesFrom: 'Magnemite', attacks: [{ name: 'Tri-Attack', damage: 40, energyCost: 2 }, { name: 'Thunder', damage: 80, energyCost: 4 }] },
         { id: 'e3', name: 'Voltorb', hp: 50, element: 'electric', stage: 'basic', attacks: [{ name: 'Tackle', damage: 10, energyCost: 1 }, { name: 'Self Destruct', damage: 80, energyCost: 3 }] },
-        { id: 'e3-1', name: 'Electrode', hp: 80, element: 'electric', stage: 'stage1', evolvesFrom: 'Voltorb', attacks: [{ name: 'Swift', damage: 30, energyCost: 2 }, { name: 'Explosion', damage: 100, energyCost: 4 }] }
+        { id: 'e3-1', name: 'Electrode', hp: 80, element: 'electric', stage: 'stage1', evolvesFrom: 'Voltorb', attacks: [{ name: 'Swift', damage: 30, energyCost: 2 }, { name: 'Explosion', damage: 100, energyCost: 4 }] },
+        { id: 'e4', name: 'Mareep', hp: 50, element: 'electric', stage: 'basic', attacks: [{ name: 'Tackle', damage: 10, energyCost: 1 }] },
+        { id: 'e4-1', name: 'Flaaffy', hp: 80, element: 'electric', stage: 'stage1', evolvesFrom: 'Mareep', attacks: [{ name: 'Thunder Shock', damage: 40, energyCost: 2 }] },
+        { id: 'e4-2', name: 'Ampharos', hp: 120, element: 'electric', stage: 'stage2', evolvesFrom: 'Flaaffy', attacks: [{ name: 'Thunder', damage: 90, energyCost: 4 }] },
+        { id: 'e5', name: 'Elekid', hp: 50, element: 'electric', stage: 'basic', attacks: [{ name: 'Thunder Punch', damage: 20, energyCost: 2 }] },
+        { id: 'e5-1', name: 'Electabuzz', hp: 90, element: 'electric', stage: 'stage1', evolvesFrom: 'Elekid', attacks: [{ name: 'Thunder', damage: 50, energyCost: 3 }] },
+        { id: 'e5-2', name: 'Electivire', hp: 130, element: 'electric', stage: 'stage2', evolvesFrom: 'Electabuzz', attacks: [{ name: 'Giga Volt', damage: 100, energyCost: 4 }] },
+        { id: 'e6', name: 'Raikou', hp: 110, element: 'electric', stage: 'basic', attacks: [{ name: 'Thunder Fang', damage: 40, energyCost: 2 }, { name: 'Thunder', damage: 80, energyCost: 4 }] },
+        { id: 'e7', name: 'Shinx', hp: 50, element: 'electric', stage: 'basic', attacks: [{ name: 'Tackle', damage: 10, energyCost: 1 }] },
+        { id: 'e7-1', name: 'Luxio', hp: 80, element: 'electric', stage: 'stage1', evolvesFrom: 'Shinx', attacks: [{ name: 'Spark', damage: 40, energyCost: 2 }] },
+        { id: 'e7-2', name: 'Luxray', hp: 130, element: 'electric', stage: 'stage2', evolvesFrom: 'Luxio', attacks: [{ name: 'Thunder Blast', damage: 100, energyCost: 4 }] }
     ]
 }
 
