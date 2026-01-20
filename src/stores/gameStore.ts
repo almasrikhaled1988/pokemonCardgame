@@ -173,11 +173,38 @@ export const useGameStore = defineStore('game', () => {
       player.energyAttachedThisTurn = true
     }
 
-    // 3. Handle Trainer (Placeholder)
+    // 3. Handle Trainer
     if (card.category === 'trainer') {
-      console.log("Trainer cards not implemented yet")
-      // player.discardPile.push(card)
-      // player.hand.splice(cardIndex, 1)
+      if (card.name === 'Potion') {
+        if (!player.active) {
+          alert("No active Pokémon to heal!")
+          return
+        }
+        player.active.currentHp = Math.min(player.active.hp || 0, (player.active.currentHp || 0) + 30)
+        console.log(`Healed ${player.active.name} for 30 HP`)
+      } else if (card.name === 'Switch') {
+        if (player.bank.length === 0) {
+          alert("No Pokémon on bench to switch with!")
+          return
+        }
+        if (!player.active) {
+          // If no active, just promote the first benched one
+          player.active = player.bank.shift() || null
+        } else {
+          // Swap active and first bench member
+          const oldActive = player.active
+          const benchMember = player.bank[0]
+          if (benchMember) {
+            player.active = benchMember
+            player.bank[0] = oldActive
+          }
+        }
+        console.log("Switched active Pokémon!")
+      }
+
+      // Discard the trainer card after use
+      player.discardPile.push({ ...card })
+      player.hand.splice(cardIndex, 1)
     }
   }
 

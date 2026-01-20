@@ -50,9 +50,6 @@ export const POKEMON_DATA = {
 }
 
 export const TRAINER_CARDS = [
-    { id: 't1', name: 'Potion', type: 'item', description: 'Heal 20 HP' },
-    { id: 't2', name: 'Switch', type: 'item', description: 'Switch Active with Bench' },
-    { id: 't3', name: 'Professor Oak', type: 'supporter', description: 'Draw 3 cards' },
-    { id: 't4', name: 'Energy Retrieval', type: 'item', description: 'Get 2 energy from discard' },
-    { id: 't5', name: 'Gust of Wind', type: 'item', description: 'Switch opponent Active' }
+    { id: 't1', name: 'Potion', type: 'item', description: 'Heal 30 HP' },
+    { id: 't2', name: 'Switch', type: 'item', description: 'Switch Active with Bench' }
 ]
