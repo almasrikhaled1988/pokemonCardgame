@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { createDeck, createStarterPokemon, createStarterEnergy } from '../utils/deckBuilder'
+import { createDeck, createStarterPokemon, createStarterEnergy, createPrizePool } from '../utils/deckBuilder'
 import type { Player, ElementType, Card } from '../types'
 
 export const useGameStore = defineStore('game', () => {
@@ -83,15 +83,7 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  function setupPrizeCards(player: Player) {
-    // Prize cards are still set aside (won't be used for winning, but keeps deck smaller)
-    for (let i = 0; i < 3; i++) {
-      if (player.deck.length > 0) {
-        const card = player.deck.pop()
-        if (card) player.prizeCards.push(card)
-      }
-    }
-  }
+
 
   function endTurn() {
     // Reset flags
@@ -127,9 +119,9 @@ export const useGameStore = defineStore('game', () => {
     player1.value.energyZone = [createStarterEnergy(player1.value.element)]
     player2.value.energyZone = [createStarterEnergy(player2.value.element)]
 
-    // Setup Prize Cards (3 cards set aside)
-    setupPrizeCards(player1.value)
-    setupPrizeCards(player2.value)
+    // Setup Prize Cards (3 EXTRA random Pokémon from the pool as rewards)
+    player1.value.prizeCards = createPrizePool(player1.value.element!, player1CustomPokemon.value)
+    player2.value.prizeCards = createPrizePool(player2.value.element!, player2CustomPokemon.value)
 
     // Draw Initial Hands (5 cards since we already have starter pokemon)
     drawCard(player1.value, 5)

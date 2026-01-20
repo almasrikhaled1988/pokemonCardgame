@@ -29,7 +29,7 @@ export function createStarterEnergy(element: ElementType): Card {
     return {
         id: `starter-energy-${element}`,
         uniqueId: Math.random().toString(36).substr(2, 9),
-        name: `${capitalize(element)} Energy`,
+        name: `Starting ${capitalize(element)} Energy`,
         element: element,
         type: 'energy'
     }
@@ -97,6 +97,33 @@ export function shuffle(deck: Card[]): Card[] {
         newDeck[j] = temp
     }
     return newDeck
+}
+
+export function createPrizePool(element: string, excludedCards: Card[]): Card[] {
+    const prizes: Card[] = []
+    const excludedIds = new Set(excludedCards.map(c => c.id))
+
+    // Get all pokemon for this element
+    const allPokemons = JSON.parse(JSON.stringify((POKEMON_DATA as Record<string, unknown[]>)[element])) as Card[]
+
+    if (allPokemons) {
+        // Filter out the ones already in the selected deck
+        const availableForPrizes = allPokemons.filter(p => !excludedIds.has(p.id))
+
+        // Shuffle and take 3
+        const shuffled = shuffle(availableForPrizes)
+        const selected = shuffled.slice(0, 3)
+
+        selected.forEach(card => {
+            card.type = 'pokemon'
+            card.currentHp = card.hp
+            card.attachedEnergy = []
+            card.uniqueId = Math.random().toString(36).substr(2, 9)
+            prizes.push(card)
+        })
+    }
+
+    return prizes
 }
 
 function capitalize(str: string): string {
