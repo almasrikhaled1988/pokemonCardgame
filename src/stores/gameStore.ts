@@ -6,7 +6,7 @@ import type { Player, ElementType, Card } from '../types'
 export const useGameStore = defineStore('game', () => {
   // Game state
   const currentTurn = ref<1 | 2>(1)
-  const gamePhase = ref<'setup' | 'playing' | 'ended'>('setup')
+  const gamePhase = ref<'setup' | 'deckBuilding' | 'playing' | 'ended'>('setup')
   const turnNumber = ref(1)
   const winner = ref<string | null>(null)
 
@@ -52,12 +52,24 @@ export const useGameStore = defineStore('game', () => {
     return currentTurn.value === 1 ? player2.value : player1.value
   })
 
+  // Custom Deck Selections
+  const player1CustomPokemon = ref<Card[]>([])
+  const player2CustomPokemon = ref<Card[]>([])
+
   // Actions
   function setPlayerElement(playerNum: number, element: ElementType) {
     if (playerNum === 1) {
       player1.value.element = element
     } else {
       player2.value.element = element
+    }
+  }
+
+  function setCustomDeck(playerNum: number, pokemon: Card[]) {
+    if (playerNum === 1) {
+      player1CustomPokemon.value = pokemon
+    } else {
+      player2CustomPokemon.value = pokemon
     }
   }
 
@@ -102,12 +114,11 @@ export const useGameStore = defineStore('game', () => {
     player2.value.score = 0
     winner.value = null
 
-    // Generate Decks
-    player1.value.deck = createDeck(player1.value.element)
-    player2.value.deck = createDeck(player2.value.element)
+    // Generate Decks using custom selections if available
+    player1.value.deck = createDeck(player1.value.element, player1CustomPokemon.value)
+    player2.value.deck = createDeck(player2.value.element, player2CustomPokemon.value)
 
     // Set Starter Pokémon in Active position
-    // Fire = Charmander, Water = Squirtle, Grass = Bulbasaur, Electric = Pikachu
     player1.value.active = createStarterPokemon(player1.value.element)
     player2.value.active = createStarterPokemon(player2.value.element)
 
@@ -315,6 +326,7 @@ export const useGameStore = defineStore('game', () => {
     currentPlayer,
     opponent,
     setPlayerElement,
+    setCustomDeck,
     endTurn,
     startGame,
     drawCard,

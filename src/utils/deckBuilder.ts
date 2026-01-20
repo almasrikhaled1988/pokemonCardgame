@@ -34,24 +34,34 @@ export function createStarterEnergy(element: ElementType): Card {
     }
 }
 
-export function createDeck(element: string): Card[] {
+export function createDeck(element: string, customPokemon?: Card[]): Card[] {
     const deck: Card[] = []
 
-    // Get Pokemon for this element (excluding the starter to avoid duplicates)
-    const pokemons = structuredClone((POKEMON_DATA as Record<string, unknown[]>)[element]) as Card[]
-    if (pokemons) {
-        // Filter out the starter Pokemon (first one) since it's already in active
-        const starterName = STARTERS[element as ElementType]?.name
-        pokemons.forEach(card => {
-            // Skip the starter (already placed in active)
-            if (card.name === starterName) return
-
-            card.type = 'pokemon'
-            card.currentHp = card.hp
-            card.attachedEnergy = []
-            card.uniqueId = Math.random().toString(36).substr(2, 9)
-            deck.push(card)
+    if (customPokemon && customPokemon.length > 0) {
+        // Use custom selected Pokemon
+        customPokemon.forEach(card => {
+            const newCard = structuredClone(card)
+            newCard.type = 'pokemon'
+            newCard.currentHp = newCard.hp
+            newCard.attachedEnergy = []
+            newCard.uniqueId = Math.random().toString(36).substr(2, 9)
+            deck.push(newCard)
         })
+    } else {
+        // Get Pokemon for this element (excluding the starter to avoid duplicates)
+        const pokemons = structuredClone((POKEMON_DATA as Record<string, unknown[]>)[element]) as Card[]
+        if (pokemons) {
+            const starterName = STARTERS[element as ElementType]?.name
+            pokemons.forEach(card => {
+                if (card.name === starterName) return
+
+                card.type = 'pokemon'
+                card.currentHp = card.hp
+                card.attachedEnergy = []
+                card.uniqueId = Math.random().toString(36).substr(2, 9)
+                deck.push(card)
+            })
+        }
     }
 
     // Add exactly 3 energy cards to the deck (total 4 per player including the starter)

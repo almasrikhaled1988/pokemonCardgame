@@ -43,10 +43,30 @@
         <button 
           class="btn btn-primary start-btn"
           :disabled="!player1Element || !player2Element"
-          @click="handleStartGame"
+          @click="goToDeckBuilding"
         >
-          Start Game
+          Next: Build Decks
         </button>
+      </div>
+
+      <!-- Deck Building Phase -->
+      <div v-else-if="gameStore.gamePhase === 'deckBuilding'" class="deck-building-view">
+        <div v-if="buildingStep === 1">
+          <DeckEditor
+            :player-num="1"
+            player-label="Player 1"
+            :element="player1Element!"
+            @confirm="handleDeckConfirm(1, $event)"
+          />
+        </div>
+        <div v-else-if="buildingStep === 2">
+          <DeckEditor
+            :player-num="2"
+            player-label="Player 2"
+            :element="player2Element!"
+            @confirm="handleDeckConfirm(2, $event)"
+          />
+        </div>
       </div>
       
       <!-- Game Board (Single View) -->
@@ -112,6 +132,7 @@ import { ref, computed } from 'vue'
 import { useGameStore } from './stores/gameStore'
 import OpponentSummary from './components/OpponentSummary.vue'
 import ActivePlayerBoard from './components/ActivePlayerBoard.vue'
+import DeckEditor from './components/DeckEditor.vue'
 import type { ElementType, Card } from './types'
 
 const gameStore = useGameStore()
@@ -119,6 +140,7 @@ const gameStore = useGameStore()
 // Local state for setup selection
 const player1Element = ref<ElementType | null>(null)
 const player2Element = ref<ElementType | null>(null)
+const buildingStep = ref(1) // 1 for Player 1, 2 for Player 2
 
 const elements: ElementType[] = ['fire', 'water', 'grass', 'electric']
 
@@ -134,6 +156,22 @@ function selectElement(playerNum: number, element: ElementType) {
   } else {
     player2Element.value = element
     gameStore.setPlayerElement(2, element)
+  }
+}
+
+function goToDeckBuilding() {
+  if (!player1Element.value || !player2Element.value) return
+  gameStore.gamePhase = 'deckBuilding'
+  buildingStep.value = 1
+}
+
+function handleDeckConfirm(playerNum: number, selection: Card[]) {
+  gameStore.setCustomDeck(playerNum, selection)
+  
+  if (playerNum === 1) {
+    buildingStep.value = 2
+  } else {
+    handleStartGame()
   }
 }
 
@@ -246,6 +284,15 @@ function getElementEmoji(element: string) {
 .start-btn {
   font-size: 1.3rem;
   padding: 16px 48px;
+}
+
+/* Deck Building View */
+.deck-building-view {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 20px;
 }
 
 /* Game View */
