@@ -272,9 +272,19 @@ export const useGameStore = defineStore('game', () => {
       victim.active = null
     }
 
-    // 2. Attacker gains 1 point
+    // 2. Attacker gains 1 point and draws a Prize Card
     const attacker = currentPlayer.value
     attacker.score += 1
+
+    // Draw prize card
+    if (attacker.prizeCards.length > 0) {
+      const prizeCard = attacker.prizeCards.shift()
+      if (prizeCard) {
+        attacker.hand.push(prizeCard)
+        console.log(`${attacker.name} drew a Prize Card: ${prizeCard.name}!`)
+      }
+    }
+
     console.log(`${attacker.name} scored! (${attacker.score}/3 points)`)
 
     // 3. Check Win Condition: First to 3 points wins

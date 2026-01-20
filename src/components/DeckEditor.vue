@@ -65,7 +65,7 @@ const emit = defineEmits<{
   (e: 'confirm', selection: Card[]): void
 }>()
 
-const maxSelection = 6
+const maxSelection = 12
 const selectedPokemon = ref<Card[]>([])
 
 const availablePokemon = computed(() => {
