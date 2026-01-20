@@ -13,7 +13,8 @@ export default defineConfig({
     vueDevTools(),
   ],
   server: {
-    port: 5175
+    port: 5175,
+    allowedHosts: ['pokegame.khaledalmasri.eu']
   },
   resolve: {
     alias: {
