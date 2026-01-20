@@ -40,7 +40,8 @@ export function createDeck(element: string, customPokemon?: Card[]): Card[] {
     if (customPokemon && customPokemon.length > 0) {
         // Use custom selected Pokemon
         customPokemon.forEach(card => {
-            const newCard = structuredClone(card)
+            // Use JSON parse/stringify for safer cloning of Vue proxies
+            const newCard = JSON.parse(JSON.stringify(card))
             newCard.type = 'pokemon'
             newCard.currentHp = newCard.hp
             newCard.attachedEnergy = []
@@ -49,7 +50,7 @@ export function createDeck(element: string, customPokemon?: Card[]): Card[] {
         })
     } else {
         // Get Pokemon for this element (excluding the starter to avoid duplicates)
-        const pokemons = structuredClone((POKEMON_DATA as Record<string, unknown[]>)[element]) as Card[]
+        const pokemons = JSON.parse(JSON.stringify((POKEMON_DATA as Record<string, unknown[]>)[element])) as Card[]
         if (pokemons) {
             const starterName = STARTERS[element as ElementType]?.name
             pokemons.forEach(card => {
@@ -76,7 +77,7 @@ export function createDeck(element: string, customPokemon?: Card[]): Card[] {
     }
 
     // Add trainer cards
-    const trainers = structuredClone(TRAINER_CARDS) as Card[]
+    const trainers = JSON.parse(JSON.stringify(TRAINER_CARDS)) as Card[]
     trainers.forEach((card) => {
         card.uniqueId = Math.random().toString(36).substr(2, 9)
         card.category = 'trainer'
