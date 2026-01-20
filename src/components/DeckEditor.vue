@@ -22,7 +22,12 @@
         <img :src="getPokemonSprite(pokemon.name)" :alt="pokemon.name" class="item-sprite" />
         <div class="item-info">
           <span class="item-name">{{ pokemon.name }}</span>
-          <span class="item-hp">{{ pokemon.hp }} HP</span>
+          <div class="item-meta">
+            <span class="item-hp">{{ pokemon.hp }} HP</span>
+            <span v-if="pokemon.stage && pokemon.stage !== 'basic'" class="item-stage">
+              {{ pokemon.stage }} (from {{ pokemon.evolvesFrom }})
+            </span>
+          </div>
         </div>
         <div class="item-attacks">
           <div v-for="atk in pokemon.attacks" :key="atk.name" class="mini-attack">
@@ -204,9 +209,23 @@ function handleConfirm() {
   font-size: 0.9rem;
 }
 
+.item-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
 .item-hp {
   font-size: 0.75rem;
   color: var(--text-secondary);
+}
+
+.item-stage {
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: #fbbf24;
+  text-transform: uppercase;
 }
 
 .item-attacks {

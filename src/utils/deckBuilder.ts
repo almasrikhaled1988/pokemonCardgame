@@ -20,7 +20,8 @@ export function createStarterPokemon(element: ElementType): Card {
         hp: starter.hp,
         currentHp: starter.hp,
         attacks: [...starter.attacks],
-        attachedEnergy: []
+        attachedEnergy: [],
+        stage: 'basic'
     }
 }
 

@@ -18,6 +18,8 @@ export interface Card {
     currentHp?: number;
     attacks?: Attack[];
     attachedEnergy?: Card[];
+    stage?: 'basic' | 'stage1' | 'stage2';
+    evolvesFrom?: string;
 
     // Trainer specific
     description?: string;

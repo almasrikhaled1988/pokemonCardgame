@@ -9,6 +9,7 @@ export const useGameStore = defineStore('game', () => {
   const gamePhase = ref<'setup' | 'deckBuilding' | 'playing' | 'ended'>('setup')
   const turnNumber = ref(1)
   const winner = ref<string | null>(null)
+  const pendingEvolution = ref<Card | null>(null)
 
   // Player 1 state
   const player1 = ref<Player>({
@@ -151,10 +152,17 @@ export const useGameStore = defineStore('game', () => {
 
     // 1. Handle Pokemon
     if (card.type === 'pokemon') {
+      // If it's an evolution card, set pending evolution
+      if (card.stage === 'stage1' || card.stage === 'stage2') {
+        pendingEvolution.value = card
+        return
+      }
+
       // If Active is empty, must go to Active
       if (!player.active) {
         // Set currentHp when placing
         card.currentHp = card.hp
+        card.stage = card.stage || 'basic'
         player.active = card
         player.hand.splice(cardIndex, 1)
         return
@@ -164,6 +172,7 @@ export const useGameStore = defineStore('game', () => {
       if (player.bank.length < 3) {
         // Set currentHp when placing
         card.currentHp = card.hp
+        card.stage = card.stage || 'basic'
         player.bank.push(card)
         player.hand.splice(cardIndex, 1)
         return
@@ -316,11 +325,74 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
+  function evolvePokemon(targetCard: Card) {
+    if (!pendingEvolution.value) return
+    const player = currentPlayer.value
+    const evolver = pendingEvolution.value
+
+    // Check if target matches evolvesFrom
+    if (targetCard.name !== evolver.evolvesFrom) {
+      alert(`This card evolves from ${evolver.evolvesFrom}, not ${targetCard.name}!`)
+      return
+    }
+
+    // Find where target is
+    let onBoard = false
+    let isBank = false
+    let bankIndex = -1
+
+    if (player.active?.uniqueId === targetCard.uniqueId) {
+      onBoard = true
+    } else {
+      bankIndex = player.bank.findIndex(c => c.uniqueId === targetCard.uniqueId)
+      if (bankIndex !== -1) {
+        onBoard = true
+        isBank = true
+      }
+    }
+
+    if (!onBoard) {
+      alert("Target Pokémon not found on board!")
+      return
+    }
+
+    // Prepare the new evolved card
+    const evolvedCard: Card = JSON.parse(JSON.stringify(evolver))
+    evolvedCard.uniqueId = Math.random().toString(36).substr(2, 9)
+    evolvedCard.attachedEnergy = targetCard.attachedEnergy || []
+
+    // Calculate new currentHp (maintaining damage)
+    const damage = (targetCard.hp || 0) - (targetCard.currentHp || 0)
+    evolvedCard.currentHp = Math.max(0, (evolvedCard.hp || 0) - damage)
+
+    // Replace on board
+    if (!isBank) {
+      player.active = evolvedCard
+    } else {
+      player.bank[bankIndex] = evolvedCard
+    }
+
+    // Remove evolver from hand
+    const handIndex = player.hand.findIndex(c => c.uniqueId === evolver.uniqueId)
+    if (handIndex !== -1) {
+      player.hand.splice(handIndex, 1)
+    }
+
+    // Reset pending
+    pendingEvolution.value = null
+    console.log(`Evolved ${targetCard.name} into ${evolvedCard.name}!`)
+  }
+
+  function cancelEvolution() {
+    pendingEvolution.value = null
+  }
+
   return {
     currentTurn,
     gamePhase,
     turnNumber,
     winner,
+    pendingEvolution,
     player1,
     player2,
     currentPlayer,
@@ -332,6 +404,8 @@ export const useGameStore = defineStore('game', () => {
     drawCard,
     playCardFromHand,
     attack,
-    promoteBenchPokemon
+    promoteBenchPokemon,
+    evolvePokemon,
+    cancelEvolution
   }
 })

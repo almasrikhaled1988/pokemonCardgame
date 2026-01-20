@@ -112,8 +112,11 @@
           :energy-zone="gameStore.currentPlayer.energyZone"
           :discard-pile="gameStore.currentPlayer.discardPile"
           :prize-cards="gameStore.currentPlayer.prizeCards"
+          :pending-evolution="gameStore.pendingEvolution"
           @play-card="handlePlayCard"
           @attack="handleAttack"
+          @evolve="handleEvolution"
+          @cancel-evolution="handleCancelEvolution"
         />
       </div>
 
@@ -186,6 +189,14 @@ function handlePlayCard(card: Card) {
 
 function handleAttack(index: number) {
   gameStore.attack(index)
+}
+
+function handleEvolution(target: Card) {
+  gameStore.evolvePokemon(target)
+}
+
+function handleCancelEvolution() {
+  gameStore.cancelEvolution()
 }
 
 function resetGame() {

@@ -1,5 +1,12 @@
 <template>
-  <div class="active-board">
+  <div class="active-board" :class="{ 'evolution-mode': pendingEvolution }">
+    <!-- Evolution Overlay Banner -->
+    <div v-if="pendingEvolution" class="evolution-banner">
+      <div class="banner-content">
+        <span class="pulse-text">✨ Select Pokémon to evolve into <strong>{{ pendingEvolution.name }}</strong></span>
+        <button class="btn-cancel-evo" @click="$emit('cancelEvolution')">Cancel</button>
+      </div>
+    </div>
     <!-- Main Play Area -->
     <div class="play-area">
       <!-- Left Side: Deck & Energy -->
@@ -38,7 +45,10 @@
             <!-- Large Active Card -->
             <div class="active-card" :class="active.element">
               <div class="card-top">
-                <span class="card-name">{{ active.name }}</span>
+                <div class="card-name-group">
+                  <span class="card-name">{{ active.name }}</span>
+                  <span v-if="active.stage" class="card-stage-label">{{ active.stage }}</span>
+                </div>
                 <span class="card-hp" :class="hpClass">{{ active.currentHp }}/{{ active.hp }} HP</span>
               </div>
               
@@ -90,10 +100,11 @@
               v-for="(slot, idx) in benchSlots" 
               :key="idx" 
               class="bench-slot"
-              :class="{ filled: slot }"
-              @click="slot && $emit('benchClick', slot)"
+              :class="{ filled: slot, 'evo-target': pendingEvolution && slot }"
+              @click="handleBenchSlotClick(slot)"
             >
               <div v-if="slot" class="bench-card" :class="slot.element">
+                <div v-if="slot.stage && slot.stage !== 'basic'" class="bench-stage">{{ slot.stage }}</div>
                 <img 
                   :src="getPokemonSprite(slot.name)" 
                   :alt="slot.name"
@@ -144,10 +155,11 @@
           v-for="card in hand" 
           :key="card.uniqueId"
           class="hand-card"
-          :class="[card.type, card.element, card.category]"
+          :class="[card.type, card.element, card.category, card.stage, { 'pending-source': pendingEvolution?.uniqueId === card.uniqueId }]"
           @click="$emit('playCard', card)"
         >
           <template v-if="card.type === 'pokemon'">
+            <div v-if="card.stage && card.stage !== 'basic'" class="hc-stage">{{ card.stage }}</div>
             <img 
               :src="getPokemonSprite(card.name)" 
               :alt="card.name"
@@ -182,13 +194,16 @@ const props = defineProps<{
   energyZone: Card[]
   discardPile: Card[]
   prizeCards: Card[]
+  pendingEvolution: Card | null
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'playCard', card: Card): void
   (e: 'attack', index: number): void
   (e: 'benchClick', card: Card): void
   (e: 'deckClick'): void
+  (e: 'evolve', target: Card): void
+  (e: 'cancelEvolution'): void
 }>()
 
 const hpPercent = computed(() => {
@@ -213,7 +228,17 @@ const benchSlots = computed(() => {
 })
 
 function handleActiveClick() {
-  // Could show detailed view
+  if (props.pendingEvolution && props.active) {
+    emit('evolve', props.active)
+  }
+}
+
+function handleBenchSlotClick(card: Card | null) {
+  if (props.pendingEvolution && card) {
+    emit('evolve', card)
+  } else if (card) {
+    emit('benchClick', card)
+  }
 }
 
 function getEmoji(element: string | undefined) {
@@ -438,9 +463,27 @@ function handleImageError(e: Event) {
   align-items: center;
 }
 
+.card-name-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
 .card-name {
   font-size: 1.1rem;
   font-weight: 700;
+  line-height: 1;
+}
+
+.card-stage-label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--text-secondary);
+  background: rgba(0,0,0,0.2);
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-top: 2px;
 }
 
 .card-hp {
@@ -595,6 +638,19 @@ function handleImageError(e: Event) {
 
 .bench-name { font-size: 0.65rem; font-weight: 600; }
 .bench-hp { font-size: 0.55rem; color: var(--text-secondary); }
+
+.bench-stage {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 0.45rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: rgba(0,0,0,0.4);
+  padding: 1px 3px;
+  border-radius: 3px;
+  color: white;
+}
 .bench-emoji { font-size: 1.2rem; }
 
 .bench-slot:hover .bench-card {
@@ -676,4 +732,93 @@ function handleImageError(e: Event) {
 .hc-hp { font-size: 0.6rem; color: var(--text-secondary); }
 .hc-energy { font-size: 2rem; }
 .hc-trainer { font-size: 0.6rem; text-align: center; font-weight: 600; }
+.hand-card.pokemon.stage1, .hand-card.pokemon.stage2 {
+  border-color: #fbbf24;
+  background: rgba(251, 191, 36, 0.05);
+}
+
+/* Evolution Banner */
+.evolution-banner {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
+  color: #000;
+  padding: 10px 24px;
+  border-radius: 30px;
+  z-index: 1000;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+  border: 2px solid white;
+}
+
+.banner-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-weight: 700;
+}
+
+.pulse-text {
+  animation: textPulse 1.5s infinite;
+}
+
+@keyframes textPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.02); }
+}
+
+.btn-cancel-evo {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 4px 12px;
+  border-radius: 15px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+/* Evolution Target Highlighting */
+.evolution-mode .active-card, 
+.evolution-mode .bench-card {
+  transition: all 0.3s ease;
+}
+
+.evo-target {
+  position: relative;
+}
+
+.evo-target::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 4px dashed #fbbf24;
+  border-radius: 12px;
+  animation: borderDash 2s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes borderDash {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: 20; }
+}
+
+.active-board.evolution-mode .active-card:hover,
+.active-board.evolution-mode .bench-card:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 20px #fbbf24;
+  cursor: pointer;
+}
+
+/* Stage Labels */
+.hc-stage {
+  font-size: 0.5rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: rgba(0,0,0,0.3);
+  padding: 1px 4px;
+  border-radius: 4px;
+  margin-bottom: -4px;
+}
 </style>
