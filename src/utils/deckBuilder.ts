@@ -54,8 +54,8 @@ export function createDeck(element: string): Card[] {
         })
     }
 
-    // Add 10 energy cards (minus 1 since we start with 1 in energy zone)
-    for (let i = 0; i < 9; i++) {
+    // Add exactly 3 energy cards to the deck (total 4 per player including the starter)
+    for (let i = 0; i < 3; i++) {
         deck.push({
             id: `energy-${element}-${i}`,
             uniqueId: Math.random().toString(36).substr(2, 9),
