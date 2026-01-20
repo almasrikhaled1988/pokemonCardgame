@@ -1,0 +1,92 @@
+import { POKEMON_DATA, TRAINER_CARDS } from '../data/cards'
+import type { Card, ElementType } from '../types'
+
+// Starter Pokemon for each element
+const STARTERS: Record<ElementType, { id: string; name: string; hp: number; attacks: { name: string; damage: number; energyCost: number }[] }> = {
+    fire: { id: 'starter-fire', name: 'Charmander', hp: 50, attacks: [{ name: 'Scratch', damage: 10, energyCost: 1 }, { name: 'Ember', damage: 30, energyCost: 2 }] },
+    water: { id: 'starter-water', name: 'Squirtle', hp: 60, attacks: [{ name: 'Tackle', damage: 10, energyCost: 1 }, { name: 'Water Gun', damage: 20, energyCost: 2 }] },
+    grass: { id: 'starter-grass', name: 'Bulbasaur', hp: 60, attacks: [{ name: 'Tackle', damage: 10, energyCost: 1 }, { name: 'Vine Whip', damage: 30, energyCost: 2 }] },
+    electric: { id: 'starter-electric', name: 'Pikachu', hp: 50, attacks: [{ name: 'Quick Attack', damage: 10, energyCost: 1 }, { name: 'Thunderbolt', damage: 40, energyCost: 3 }] }
+}
+
+export function createStarterPokemon(element: ElementType): Card {
+    const starter = STARTERS[element]
+    return {
+        id: starter.id,
+        uniqueId: Math.random().toString(36).substr(2, 9),
+        name: starter.name,
+        type: 'pokemon',
+        element: element,
+        hp: starter.hp,
+        currentHp: starter.hp,
+        attacks: [...starter.attacks],
+        attachedEnergy: []
+    }
+}
+
+export function createStarterEnergy(element: ElementType): Card {
+    return {
+        id: `starter-energy-${element}`,
+        uniqueId: Math.random().toString(36).substr(2, 9),
+        name: `${capitalize(element)} Energy`,
+        element: element,
+        type: 'energy'
+    }
+}
+
+export function createDeck(element: string): Card[] {
+    const deck: Card[] = []
+
+    // Get Pokemon for this element (excluding the starter to avoid duplicates)
+    const pokemons = structuredClone((POKEMON_DATA as Record<string, unknown[]>)[element]) as Card[]
+    if (pokemons) {
+        // Filter out the starter Pokemon (first one) since it's already in active
+        const starterName = STARTERS[element as ElementType]?.name
+        pokemons.forEach(card => {
+            // Skip the starter (already placed in active)
+            if (card.name === starterName) return
+
+            card.type = 'pokemon'
+            card.currentHp = card.hp
+            card.attachedEnergy = []
+            card.uniqueId = Math.random().toString(36).substr(2, 9)
+            deck.push(card)
+        })
+    }
+
+    // Add 10 energy cards (minus 1 since we start with 1 in energy zone)
+    for (let i = 0; i < 9; i++) {
+        deck.push({
+            id: `energy-${element}-${i}`,
+            uniqueId: Math.random().toString(36).substr(2, 9),
+            name: `${capitalize(element)} Energy`,
+            element: element,
+            type: 'energy'
+        })
+    }
+
+    // Add trainer cards
+    const trainers = structuredClone(TRAINER_CARDS) as Card[]
+    trainers.forEach((card) => {
+        card.uniqueId = Math.random().toString(36).substr(2, 9)
+        card.category = 'trainer'
+        deck.push(card)
+    })
+
+    return shuffle(deck)
+}
+
+export function shuffle(deck: Card[]): Card[] {
+    const newDeck = [...deck]
+    for (let i = newDeck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const temp = newDeck[i]!
+        newDeck[i] = newDeck[j]!
+        newDeck[j] = temp
+    }
+    return newDeck
+}
+
+function capitalize(str: string): string {
+    return str.charAt(0).toUpperCase() + str.slice(1)
+}
