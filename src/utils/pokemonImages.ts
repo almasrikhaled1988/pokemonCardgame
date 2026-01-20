@@ -5,8 +5,12 @@
 const POKEMON_IDS: Record<string, number> = {
     // Fire
     charmander: 4,
+    charmeleon: 5,
+    charizard: 6,
     vulpix: 37,
+    ninetales: 38,
     growlithe: 58,
+    arcanine: 59,
     ponyta: 77,
     magmar: 126,
     flareon: 136,
@@ -17,8 +21,12 @@ const POKEMON_IDS: Record<string, number> = {
 
     // Water
     squirtle: 7,
+    wartortle: 8,
+    blastoise: 9,
     psyduck: 54,
+    golduck: 55,
     magikarp: 129,
+    gyarados: 130,
     poliwag: 60,
     tentacool: 72,
     seel: 86,
@@ -29,8 +37,12 @@ const POKEMON_IDS: Record<string, number> = {
 
     // Grass
     bulbasaur: 1,
+    ivysaur: 2,
+    venusaur: 3,
     oddish: 43,
+    gloom: 44,
     bellsprout: 69,
+    weepinbell: 70,
     exeggcute: 102,
     tangela: 114,
     chikorita: 152,
@@ -41,8 +53,11 @@ const POKEMON_IDS: Record<string, number> = {
 
     // Electric
     pikachu: 25,
+    raichu: 26,
     magnemite: 81,
+    magneton: 82,
     voltorb: 100,
+    electrode: 101,
     electabuzz: 125,
     jolteon: 135,
     zapdos: 145,
