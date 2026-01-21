@@ -59,16 +59,14 @@ export const playBotTurn = async (store: GameStore) => {
         }
     }
 
-    // 6. Strategic Switch
-    // If active is low OR has bad status (asleep/paralyzed) AND bench has someone healthy
-    if (active && p2.bank.length > 0) {
-        const isDisabled = active.statusEffects?.some(s => s === 'asleep' || s === 'paralyzed')
-        const isLow = (active.currentHp || 0) < 30
-        const healthyBench = p2.bank.find(p => (p.currentHp || 0) > 50)
-
-        if ((isDisabled || isLow) && healthyBench) {
-            const switchCard = p2.hand.find(c => c.name === 'Switch')
-            if (switchCard) {
+    // 3. Check for evolutions
+    const handForEvo = [...p2.hand]
+    for (const card of handForEvo) {
+        if (card.type === 'pokemon' && (card.stage === 'stage1' || card.stage === 'stage2')) {
+            // Find target on board
+            const target = [p2.active, ...p2.bank].find(p => p && p.name === card.evolvesFrom)
+            if (target) {
+                const targetName = target.name
                 await delay(1000)
                 console.log("Bot uses Switch")
                 store.playCardFromHand(switchCard)

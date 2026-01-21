@@ -23,8 +23,8 @@ This roadmap outlines the steps to enhance the game with deeper mechanics, visua
     - Implement CSS-based attack animations for different elements.
     - Add screen shake for heavy hits.
 - [x] **6. Hover Tooltips & Detail View**
+- [x] **6. Hover Tooltips & Detail View**
     - Create a tooltip system for cards and attacks.
-    - Implement a full-screen detail view (modal).
 - [x] **7. Sound System**
     - Add SFX for attacks, draws, and evolution.
     - Implement a SoundManager with mute functionality.
@@ -39,4 +39,4 @@ This roadmap outlines the steps to enhance the game with deeper mechanics, visua
     - Aggressive KO targeting and smart Trainer play.
 
 ---
-*Progress: 100% (Alpha Complete)*
+*Progress: 77%*

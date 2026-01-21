@@ -155,7 +155,9 @@
       </div>
     </div>
     <CardTooltip />
-    <CardDetailModal />
+    <button class="mute-btn" @click="toggleMute" title="Toggle Sound">
+      {{ isMuted ? '🔇' : '🔊' }}
+    </button>
   </div>
 </template>
 
@@ -167,23 +169,16 @@ import OpponentSummary from './components/OpponentSummary.vue'
 import ActivePlayerBoard from './components/ActivePlayerBoard.vue'
 import DeckEditor from './components/DeckEditor.vue'
 import CardTooltip from './components/CardTooltip.vue'
-import CardDetailModal from './components/CardDetailModal.vue'
-import { useI18n } from 'vue-i18n'
 import type { ElementType, Card } from './types'
+import { getElementEmoji } from './utils/gameUtils'
+import { soundService } from './services/soundService'
 
 const gameStore = useGameStore()
-const { t, locale } = useI18n()
+const isMuted = ref(soundService.isMuted())
 
-// Watch for locale changes to set document direction
-watch(locale, (newLocale) => {
-  if (newLocale === 'ar') {
-    document.documentElement.dir = 'rtl'
-    document.documentElement.lang = 'ar'
-  } else {
-    document.documentElement.dir = 'ltr'
-    document.documentElement.lang = newLocale
-  }
-}, { immediate: true })
+function toggleMute() {
+  isMuted.value = soundService.toggleMute()
+}
 
 // Local state for setup selection
 const player1Element = ref<ElementType | null>(null)
@@ -259,20 +254,17 @@ function resetGame() {
 
 // Watch for bot turn
 watch(() => [gameStore.currentTurn, gameStore.gamePhase], async ([turn, phase]) => {
+  console.log('Watcher triggered:', { turn, phase, isBot: gameStore.player2.isBot, winner: gameStore.winner })
   if (phase === 'playing' && turn === 2 && gameStore.player2.isBot && !gameStore.winner) {
-    await playBotTurn(gameStore)
+    console.log('Starting bot turn...')
+    try {
+      await playBotTurn(gameStore)
+    } catch (e) {
+      console.error('Bot turn error:', e)
+    }
   }
 }, { immediate: true })
 
-function getElementEmoji(element: string) {
-  const emojis: Record<string, string> = {
-    fire: '🔥',
-    water: '💧',
-    grass: '🌿',
-    electric: '⚡'
-  }
-  return emojis[element] || ''
-}
 </script>
 
 <style scoped>
@@ -579,5 +571,29 @@ function getElementEmoji(element: string) {
 @keyframes thinkingBounce {
   from { transform: translateY(0); opacity: 0.4; }
   to { transform: translateY(-4px); opacity: 1; }
+}
+
+.mute-btn {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  font-size: 1.5rem;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.mute-btn:hover {
+  background: rgba(0, 0, 0, 0.8);
+  transform: scale(1.1);
 }
 </style>

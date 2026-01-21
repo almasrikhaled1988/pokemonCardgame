@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { createDeck, createStarterPokemon, createStarterEnergy, createPrizePool } from '../utils/deckBuilder'
 import { soundManager } from '../utils/soundManager'
 import type { Player, ElementType, Card } from '../types'
+import { soundService } from '../services/soundService'
 
 export const useGameStore = defineStore('game', () => {
   // Game state
@@ -108,6 +109,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function drawCard(player: Player, count = 1) {
+    if (count > 0) soundService.play('draw')
     for (let i = 0; i < count; i++) {
       if (player.deck.length > 0) {
         const card = player.deck.pop()
@@ -290,8 +292,7 @@ export const useGameStore = defineStore('game', () => {
         player.active = card
         player.hand.splice(cardIndex, 1)
         addLog(`${player.name} played ${card.name} as active.`)
-        soundManager.play('click')
-        triggerOnPlayAbility(card)
+        soundService.play('play-card')
         return
       }
 
@@ -303,8 +304,7 @@ export const useGameStore = defineStore('game', () => {
         player.bank.push(card)
         player.hand.splice(cardIndex, 1)
         addLog(`${player.name} benched ${card.name}.`)
-        soundManager.play('click')
-        triggerOnPlayAbility(card)
+        soundService.play('play-card')
         return
       }
 
@@ -322,7 +322,7 @@ export const useGameStore = defineStore('game', () => {
       player.hand.splice(cardIndex, 1)
       player.energyAttachedThisTurn = true
       addLog(`${player.name} added ${card.element} energy.`)
-      soundManager.play('click')
+      soundService.play('play-card')
     }
 
     // 3. Handle Trainer (Item & Supporter)
@@ -371,6 +371,7 @@ export const useGameStore = defineStore('game', () => {
           player.hand.splice(finalHandIndex, 1)
         }
       }
+      soundService.play('play-card')
     }
   }
 
@@ -421,14 +422,7 @@ export const useGameStore = defineStore('game', () => {
 
       // Trigger VFX
       triggerVfx((activePokemon.element as ElementType) || 'neutral', opp.id === 1 ? 'player1' : 'player2')
-
-      // Play Sound (element-specific or generic attack)
-      const elementSound = activePokemon.element as string
-      if (['fire', 'water', 'grass', 'electric', 'psychic', 'fighting'].includes(elementSound)) {
-        soundManager.play(elementSound)
-      } else {
-        soundManager.play('attack')
-      }
+      soundService.playAttack((activePokemon.element as string) || 'normal')
 
       // Apply Secondary Effects
       if (selectedAttack.effect && Math.random() < (selectedAttack.effectChance || 1)) {
@@ -482,6 +476,7 @@ export const useGameStore = defineStore('game', () => {
     if (attacker.score >= 3) {
       gamePhase.value = 'ended'
       winner.value = attacker.name
+      soundService.play('victory')
       return
     }
 
@@ -501,6 +496,7 @@ export const useGameStore = defineStore('game', () => {
         // No bench, no active, no Pokemon in hand = total loss
         gamePhase.value = 'ended'
         winner.value = attacker.name
+        soundService.play('victory')
         console.log(`${attacker.name} wins! ${victim.name} has no Pokemon left!`)
       } else {
         // Victim will need to play a Pokemon from hand on their next turn
@@ -582,8 +578,7 @@ export const useGameStore = defineStore('game', () => {
     // Reset pending
     pendingEvolution.value = null
     console.log(`Evolved ${targetCard.name} into ${evolvedCard.name}!`)
-    soundManager.play('evolve')
-    triggerOnPlayAbility(evolvedCard)
+    soundService.play('evolve')
   }
 
   function cancelEvolution() {

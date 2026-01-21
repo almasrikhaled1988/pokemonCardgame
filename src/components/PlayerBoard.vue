@@ -84,6 +84,7 @@ import { computed } from 'vue'
 import Zone from './Zone.vue'
 import Card from './Card.vue'
 import type { Card as CardType, ElementType } from '../types'
+import { getElementEmoji } from '../utils/gameUtils'
 
 const props = defineProps<{
   playerNumber: number
@@ -115,15 +116,6 @@ function handleCardClick(card: CardType) {
   emit('cardClick', card)
 }
 
-function getElementEmoji(element: string) {
-  const emojis: Record<string, string> = {
-    fire: '🔥',
-    water: '💧',
-    grass: '🌿',
-    electric: '⚡'
-  }
-  return emojis[element] || '❓'
-}
 </script>
 
 <style scoped>

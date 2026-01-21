@@ -3,7 +3,9 @@
     v-if="card"
     :class="cardClasses"
     @click="$emit('click', card)"
-    @contextmenu.prevent="handleRightClick"
+    @mouseenter="handleMouseEnter"
+    @mouseleave="handleMouseLeave"
+    @mousemove="handleMouseMove"
   >
     <!-- Pokemon Card -->
     <div v-if="card.type === 'pokemon'" class="card-content">
@@ -67,7 +69,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Card } from '../types'
-import { useGameStore } from '../stores/gameStore'
+import { useUIStore } from '../stores/uiStore'
+import { getElementEmoji } from '../utils/gameUtils'
 
 const props = withDefaults(defineProps<{
   card: Card
@@ -96,6 +99,20 @@ defineEmits<{
   (e: 'click', card: Card): void
 }>()
 
+const uiStore = useUIStore()
+
+function handleMouseEnter(e: MouseEvent) {
+  uiStore.showTooltip(props.card, e.clientX, e.clientY)
+}
+
+function handleMouseLeave() {
+  uiStore.hideTooltip()
+}
+
+function handleMouseMove(e: MouseEvent) {
+  uiStore.updateTooltipPosition(e.clientX, e.clientY)
+}
+
 const cardClasses = computed(() => {
   const classes = []
   
@@ -111,16 +128,6 @@ const cardClasses = computed(() => {
   
   return classes
 })
-
-function getElementEmoji(element: string) {
-  const emojis: Record<string, string> = {
-    fire: '🔥',
-    water: '💧',
-    grass: '🌿',
-    electric: '⚡'
-  }
-  return emojis[element] || '❓'
-}
 </script>
 
 <style scoped>
