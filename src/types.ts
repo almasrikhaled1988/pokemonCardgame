@@ -1,9 +1,11 @@
-export type ElementType = 'fire' | 'water' | 'grass' | 'electric';
+export type ElementType = 'fire' | 'water' | 'grass' | 'electric' | 'psychic' | 'fighting';
 
 export interface Attack {
     name: string;
     damage: number;
     energyCost: number;
+    effect?: StatusEffect;
+    effectChance?: number; // 0 to 1
 }
 
 export interface Card {
@@ -20,15 +22,21 @@ export interface Card {
     attachedEnergy?: Card[];
     stage?: 'basic' | 'stage1' | 'stage2';
     evolvesFrom?: string;
+    weakness?: ElementType;
+    resistance?: ElementType;
+    statusEffects?: StatusEffect[];
 
     // Trainer specific
     description?: string;
     category?: 'trainer';
 }
 
+export type StatusEffect = 'burned' | 'paralyzed' | 'asleep' | 'poisoned';
+
 export interface Player {
     id: number;
     name: string;
+    isBot: boolean;
     element: ElementType | null;
     deck: Card[];
     hand: Card[];

@@ -5,6 +5,23 @@
       <div v-if="gameStore.gamePhase === 'setup'" class="setup-screen">
         <h1 class="title">Pokémon Card Game</h1>
         <p class="subtitle">Choose your element</p>
+
+        <div class="game-mode-selection">
+          <button 
+            class="btn mode-btn" 
+            :class="{ selected: gameStore.gameMode === 'single' }"
+            @click="gameStore.setGameMode('single')"
+          >
+            👤 Single Player (vs Bot)
+          </button>
+          <button 
+            class="btn mode-btn" 
+            :class="{ selected: gameStore.gameMode === 'multi' }"
+            @click="gameStore.setGameMode('multi')"
+          >
+            👥 Two Players
+          </button>
+        </div>
         
         <div class="element-selection">
           <div class="player-selection">
@@ -24,8 +41,8 @@
           
           <div class="vs-divider">VS</div>
           
-          <div class="player-selection">
-            <h2>Player 2</h2>
+          <div class="player-selection" :class="{ 'bot-selection': gameStore.gameMode === 'single' }">
+            <h2>{{ gameStore.gameMode === 'single' ? 'Bot' : 'Player 2' }}</h2>
             <div class="element-buttons">
               <button 
                 v-for="element in elements" 
@@ -36,6 +53,9 @@
               >
                 {{ getElementEmoji(element) }} {{ element }}
               </button>
+            </div>
+            <div v-if="gameStore.gameMode === 'single'" class="bot-hint">
+              The bot will play with this element!
             </div>
           </div>
         </div>
@@ -81,25 +101,19 @@
           :bench-count="gameStore.opponent.bank.length"
           :prize-count="gameStore.opponent.prizeCards.length"
           :score="gameStore.opponent.score"
+          :player-id="gameStore.opponent.id"
+          :active-vfx="gameStore.activeVfx"
         />
 
-        <!-- Current Player Info -->
-        <div class="current-player-header">
-          <div class="player-info-display">
-            <span class="your-turn">Your Turn</span>
-            <span class="player-name-display">
-              {{ gameStore.currentPlayer.name }}
-              <span class="element-tag" :class="gameStore.currentPlayer.element">
-                {{ getElementEmoji(gameStore.currentPlayer.element || '') }}
-              </span>
-            </span>
-            <span class="score-display">Score: {{ gameStore.currentPlayer.score }}/3</span>
-          </div>
-          <div class="turn-info">
-            <span class="turn-number">Turn {{ gameStore.turnNumber }}</span>
-            <button class="btn btn-end-turn" @click="gameStore.endTurn()">
-              End Turn
-            </button>
+        <!-- (Header moved inside ActivePlayerBoard) -->
+
+        <!-- Bot Thinking Overlay -->
+        <div v-if="gameStore.currentTurn === 2 && gameStore.player2.isBot" class="bot-thinking-overlay">
+          <div class="thinking-content">
+            <span class="thinking-dot"></span>
+            <span class="thinking-dot"></span>
+            <span class="thinking-dot"></span>
+            <span class="thinking-text">Bot is thinking...</span>
           </div>
         </div>
 
@@ -113,10 +127,18 @@
           :discard-pile="gameStore.currentPlayer.discardPile"
           :prize-cards="gameStore.currentPlayer.prizeCards"
           :pending-evolution="gameStore.pendingEvolution"
+          :name="gameStore.currentPlayer.name"
+          :score="gameStore.currentPlayer.score"
+          :player-id="gameStore.currentPlayer.id"
+          :active-vfx="gameStore.activeVfx"
+          :turn-number="gameStore.turnNumber"
+          :is-bot-turn="gameStore.currentTurn === 2 && gameStore.player2.isBot"
+          :logs="gameStore.logs"
           @play-card="handlePlayCard"
           @attack="handleAttack"
           @evolve="handleEvolution"
           @cancel-evolution="handleCancelEvolution"
+          @end-turn="gameStore.endTurn"
         />
       </div>
 
@@ -131,8 +153,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useGameStore } from './stores/gameStore'
+import { playBotTurn } from './services/botLogic'
 import OpponentSummary from './components/OpponentSummary.vue'
 import ActivePlayerBoard from './components/ActivePlayerBoard.vue'
 import DeckEditor from './components/DeckEditor.vue'
@@ -172,7 +195,13 @@ function handleDeckConfirm(playerNum: number, selection: Card[]) {
   gameStore.setCustomDeck(playerNum, selection)
   
   if (playerNum === 1) {
-    buildingStep.value = 2
+    if (gameStore.gameMode === 'single') {
+      // Auto-confirm bot deck with same selection or empty (store handles random if empty)
+      gameStore.setCustomDeck(2, []) 
+      handleStartGame()
+    } else {
+      buildingStep.value = 2
+    }
   } else {
     handleStartGame()
   }
@@ -206,6 +235,13 @@ function resetGame() {
   location.reload() // Simple reset for now
 }
 
+// Watch for bot turn
+watch(() => [gameStore.currentTurn, gameStore.gamePhase], async ([turn, phase]) => {
+  if (phase === 'playing' && turn === 2 && gameStore.player2.isBot && !gameStore.winner) {
+    await playBotTurn(gameStore)
+  }
+}, { immediate: true })
+
 function getElementEmoji(element: string) {
   const emojis: Record<string, string> = {
     fire: '🔥',
@@ -222,8 +258,11 @@ function getElementEmoji(element: string) {
 .setup-screen {
   max-width: 900px;
   margin: 0 auto;
-  padding: 40px 20px;
+  padding: 20px;
   text-align: center;
+  height: 100vh;
+  height: 100dvh;
+  overflow-y: auto; /* Allow scrolling here specifically */
 }
 
 .title {
@@ -236,9 +275,9 @@ function getElementEmoji(element: string) {
 }
 
 .subtitle {
-  font-size: 1.2rem;
+  font-size: 1rem;
   color: var(--text-secondary);
-  margin-bottom: 40px;
+  margin-bottom: 20px;
 }
 
 .element-selection {
@@ -265,6 +304,39 @@ function getElementEmoji(element: string) {
 
 .player-selection h2 {
   margin-bottom: 16px;
+}
+
+.game-mode-selection {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.mode-btn {
+  background: var(--bg-dark);
+  border: 2px solid var(--border-color);
+  padding: 12px 24px;
+  font-weight: 700;
+  transition: all 0.3s ease;
+}
+
+.mode-btn.selected {
+  border-color: #667eea;
+  background: rgba(102, 126, 234, 0.1);
+  box-shadow: 0 0 15px rgba(102, 126, 234, 0.3);
+}
+
+.bot-selection {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.bot-hint {
+  margin-top: 15px;
+  font-size: 0.85rem;
+  color: #ef4444;
+  font-style: italic;
 }
 
 .element-buttons {
@@ -311,88 +383,29 @@ function getElementEmoji(element: string) {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  padding: 12px;
-  gap: 12px;
-}
-
-.current-player-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 20px;
-  background: var(--bg-dark);
-  border-radius: 12px;
-  border: 2px solid var(--border-color);
-}
-
-.player-info-display {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.your-turn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 6px 14px;
-  border-radius: 20px;
-  font-size: 0.85rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  animation: pulse 2s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-.player-name-display {
-  font-size: 1.2rem;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
+  height: 100dvh;
+  padding: 8px;
   gap: 8px;
+  overflow: hidden;
+  background: radial-gradient(circle at center, #1a1a2e 0%, #06060c 100%);
+  position: relative;
 }
 
-.element-tag {
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 1rem;
+.game-view::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at 50% 50%, rgba(74, 144, 226, 0.03) 0%, transparent 60%);
+  animation: bgRotate 30s linear infinite;
+  pointer-events: none;
 }
 
-.element-tag.fire { background: var(--fire-gradient); }
-.element-tag.water { background: var(--water-gradient); }
-.element-tag.grass { background: var(--grass-gradient); }
-.element-tag.electric { background: var(--electric-gradient); }
-
-.score-display {
-  padding: 6px 14px;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  border-radius: 20px;
-  font-size: 0.9rem;
-  font-weight: 700;
-  margin-left: 12px;
-}
-
-.turn-info {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.turn-number {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-}
-
-.btn-end-turn {
-  background: var(--bg-card);
-  border: 2px solid var(--border-color);
-  padding: 8px 20px;
-}
-
-.btn-end-turn:hover {
-  background: rgba(255,255,255,0.1);
+@keyframes bgRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* Game Over */
@@ -418,16 +431,88 @@ function getElementEmoji(element: string) {
 
 /* Responsive */
 @media (max-width: 768px) {
+  .game-view {
+    padding: 4px;
+    gap: 4px;
+  }
+
+  .setup-screen {
+    padding: 10px;
+    height: 100dvh;
+    overflow-y: auto;
+  }
+  
   .element-selection {
     flex-direction: column;
+    gap: 10px;
   }
-  
+
+  .element-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .element-btn {
+    padding: 8px 12px;
+    font-size: 0.9rem;
+  }
+
+  .player-selection {
+    padding: 12px;
+    min-width: unset;
+    width: 100%;
+  }
+
+  .title {
+    font-size: 1.8rem;
+  }
+
   .vs-divider {
     transform: rotate(90deg);
+    margin: 10px 0;
   }
-  
-  .title {
-    font-size: 2rem;
-  }
+}
+
+/* Bot Thinking */
+.bot-thinking-overlay {
+  position: absolute;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.7);
+  padding: 10px 20px;
+  border-radius: 20px;
+  z-index: 100;
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(4px);
+}
+
+.thinking-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.thinking-text {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #fff;
+}
+
+.thinking-dot {
+  width: 6px;
+  height: 6px;
+  background: #667eea;
+  border-radius: 50%;
+  animation: thinkingBounce 1s infinite alternate;
+}
+
+.thinking-dot:nth-child(2) { animation-delay: 0.2s; }
+.thinking-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes thinkingBounce {
+  from { transform: translateY(0); opacity: 0.4; }
+  to { transform: translateY(-4px); opacity: 1; }
 }
 </style>

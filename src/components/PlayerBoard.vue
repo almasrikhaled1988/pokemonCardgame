@@ -19,7 +19,7 @@
     <!-- Zones Grid -->
     <div class="zones-grid">
       <!-- Row 1: Active Row -->
-      <Zone label="PRIZES" type="prizes" class="grid-prizes" :count="prizeCards.length">
+      <Zone label="0" type="prizes" class="grid-prizes" :count="prizeCards.length">
         <div class="mini-card-stack">
           <div v-for="c in prizeCards" :key="c.uniqueId" class="mini-card prize">🎁</div>
         </div>
@@ -72,7 +72,7 @@
     <!-- Hand (Overlay) -->
     <div class="hand-container">
        <div class="hand-scroll">
-          <Card v-for="card in hand" :key="card.uniqueId" :card="card" size="small" @click="handleCardClick" />
+          <Card v-for="card in hand" :key="card.uniqueId" :card="card" size="large" @click="handleCardClick" />
        </div>
     </div>
   </div>
@@ -130,7 +130,7 @@ function getElementEmoji(element: string) {
 .player-board {
   display: flex;
   flex-direction: column;
-  height: 42vh; /* Reduced to fit everything */
+  height: 30vh; /* Reduced to fit everything */
   padding: 8px 8px 70px 8px; /* Bottom padding for hand */
   position: relative;
   align-items: center; 
@@ -184,7 +184,7 @@ function getElementEmoji(element: string) {
 
 /* Hand Layout - Fixed at bottom */
 .hand-container {
-  height: 65px;
+  height: 75px;
   width: 100%;
   max-width: 500px;
   position: absolute;

@@ -31,7 +31,9 @@
         </div>
         <div class="item-attacks">
           <div v-for="atk in pokemon.attacks" :key="atk.name" class="mini-attack">
-            {{ atk.name }} ({{ atk.damage }})
+            <span class="atk-energy">{{ atk.energyCost }}⚡</span>
+            <span class="atk-name">{{ atk.name }}</span>
+            <span class="atk-dmg">{{ atk.damage }} DMG</span>
           </div>
         </div>
       </div>
@@ -194,9 +196,10 @@ function handleConfirm() {
 }
 
 .item-sprite {
-  width: 60px;
-  height: 60px;
+  width: 70px;
+  height: 70px;
   object-fit: contain;
+  flex-shrink: 0;
 }
 
 .item-info {
@@ -233,18 +236,23 @@ function handleConfirm() {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-height: 50px; /* Consistent height for 1 or 2 attacks */
 }
 
 .mini-attack {
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   background: rgba(255,255,255,0.05);
-  padding: 2px 6px;
-  border-radius: 4px;
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  padding: 4px 6px;
+  border-radius: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 4px;
 }
+
+.atk-energy { color: var(--electric-primary); font-weight: 800; }
+.atk-name { flex: 1; text-align: left; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.atk-dmg { color: #ef4444; font-weight: 800; }
 
 .editor-footer {
   display: flex;

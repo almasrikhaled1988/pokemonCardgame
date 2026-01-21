@@ -10,11 +10,15 @@ export const useGameStore = defineStore('game', () => {
   const turnNumber = ref(1)
   const winner = ref<string | null>(null)
   const pendingEvolution = ref<Card | null>(null)
+  const gameMode = ref<'single' | 'multi'>('multi')
+  const logs = ref<string[]>([])
+  const activeVfx = ref<{ type: ElementType | 'neutral'; target: 'player1' | 'player2'; timestamp: number } | null>(null)
 
   // Player 1 state
   const player1 = ref<Player>({
     id: 1,
     name: 'Player 1',
+    isBot: false,
     element: null,
     deck: [],
     hand: [],
@@ -31,6 +35,7 @@ export const useGameStore = defineStore('game', () => {
   const player2 = ref<Player>({
     id: 2,
     name: 'Player 2',
+    isBot: false,
     element: null,
     deck: [],
     hand: [],
@@ -58,6 +63,30 @@ export const useGameStore = defineStore('game', () => {
   const player2CustomPokemon = ref<Card[]>([])
 
   // Actions
+  function triggerVfx(type: ElementType | 'neutral', target: 'player1' | 'player2') {
+    activeVfx.value = { type, target, timestamp: Date.now() }
+    setTimeout(() => {
+      activeVfx.value = null
+    }, 1000)
+  }
+
+  function addLog(message: string) {
+    const turnLabel = `[T${turnNumber.value}] `
+    logs.value.unshift(turnLabel + message)
+    if (logs.value.length > 50) logs.value.pop()
+  }
+
+  function setGameMode(mode: 'single' | 'multi') {
+    gameMode.value = mode
+    if (mode === 'single') {
+      player2.value.isBot = true
+      player2.value.name = 'Bot'
+    } else {
+      player2.value.isBot = false
+      player2.value.name = 'Player 2'
+    }
+  }
+
   function setPlayerElement(playerNum: number, element: ElementType) {
     if (playerNum === 1) {
       player1.value.element = element
@@ -86,8 +115,16 @@ export const useGameStore = defineStore('game', () => {
 
 
   function endTurn() {
+    // 1. Process Status Effects for current player (who is ending their turn)
+    const player = currentPlayer.value
+    if (player.active && player.active.statusEffects) {
+      applyFinalStatusDamage(player)
+    }
+
+    addLog(`${player.name} ended their turn.`)
+
     // Reset flags
-    currentPlayer.value.energyAttachedThisTurn = false
+    player.energyAttachedThisTurn = false
 
     // Switch turn
     currentTurn.value = currentTurn.value === 1 ? 2 : 1
@@ -98,6 +135,39 @@ export const useGameStore = defineStore('game', () => {
     // Draw card for next player at start of turn
     drawCard(currentPlayer.value, 1)
   }
+
+  function applyFinalStatusDamage(player: Player) {
+    if (!player.active || !player.active.statusEffects) return
+
+    let totalPeriodicDamage = 0
+    if (player.active.statusEffects.includes('poisoned')) {
+      totalPeriodicDamage += 10
+      console.log(`${player.active.name} took 10 Poison damage`)
+    }
+    if (player.active.statusEffects.includes('burned')) {
+      totalPeriodicDamage += 20
+      console.log(`${player.active.name} took 20 Burn damage`)
+    }
+
+    if (totalPeriodicDamage > 0) {
+      player.active.currentHp = Math.max(0, (player.active.currentHp || 0) - totalPeriodicDamage)
+      addLog(`${player.active.name} took ${totalPeriodicDamage} status damage.`)
+      if (player.active.currentHp <= 0) {
+        handleKnockout(player)
+      }
+    }
+
+    // Clear one-turn effects
+    player.active.statusEffects = player.active.statusEffects.filter(e => {
+      if (e === 'paralyzed') return false // Paralyze lasts 1 opponent turn
+      if (e === 'asleep') {
+        // 50% chance to wake up
+        return Math.random() < 0.5
+      }
+      return true
+    })
+  }
+
 
   function startGame() {
     if (!player1.value.element || !player2.value.element) return
@@ -127,9 +197,16 @@ export const useGameStore = defineStore('game', () => {
     drawCard(player1.value, 5)
     drawCard(player2.value, 5)
 
+    if (gameMode.value === 'single') {
+      player2.value.isBot = true
+      player2.value.name = 'Bot'
+    }
+
     gamePhase.value = 'playing'
     turnNumber.value = 1
     currentTurn.value = 1
+    logs.value = []
+    addLog("Game started!")
   }
 
   // --- Game Logic Actions ---
@@ -157,6 +234,7 @@ export const useGameStore = defineStore('game', () => {
         card.stage = card.stage || 'basic'
         player.active = card
         player.hand.splice(cardIndex, 1)
+        addLog(`${player.name} played ${card.name} as active.`)
         return
       }
 
@@ -167,6 +245,7 @@ export const useGameStore = defineStore('game', () => {
         card.stage = card.stage || 'basic'
         player.bank.push(card)
         player.hand.splice(cardIndex, 1)
+        addLog(`${player.name} benched ${card.name}.`)
         return
       }
 
@@ -183,10 +262,11 @@ export const useGameStore = defineStore('game', () => {
       player.energyZone.push(card)
       player.hand.splice(cardIndex, 1)
       player.energyAttachedThisTurn = true
+      addLog(`${player.name} added ${card.element} energy.`)
     }
 
-    // 3. Handle Trainer
-    if (card.category === 'trainer') {
+    // 3. Handle Trainer (Item & Supporter)
+    if (card.type === 'item' || card.type === 'supporter') {
       if (card.name === 'Potion') {
         if (!player.active) {
           alert("No active Pokémon to heal!")
@@ -200,10 +280,8 @@ export const useGameStore = defineStore('game', () => {
           return
         }
         if (!player.active) {
-          // If no active, just promote the first benched one
           player.active = player.bank.shift() || null
         } else {
-          // Swap active and first bench member
           const oldActive = player.active
           const benchMember = player.bank[0]
           if (benchMember) {
@@ -212,11 +290,27 @@ export const useGameStore = defineStore('game', () => {
           }
         }
         console.log("Switched active Pokémon!")
+      } else if (card.name === 'Professor\'s Research') {
+        // Discard hand (except this card which is being played)
+        const handToDiscard = player.hand.filter(c => c.uniqueId !== card.uniqueId)
+        player.discardPile.push(...handToDiscard)
+        player.hand = [card] // Only this card left in hand temporarily
+        drawCard(player, 3)
+        console.log("Professor's Research: Discarded hand and drew 3 cards")
+      } else if (card.name === 'Bill') {
+        drawCard(player, 2)
+        addLog(`${player.name} played Bill and drew 2 cards.`)
       }
 
-      // Discard the trainer card after use
-      player.discardPile.push({ ...card })
-      player.hand.splice(cardIndex, 1)
+      // Discard the trainer card after use (find it again since hand might have changed)
+      const finalHandIndex = player.hand.findIndex(c => c.uniqueId === card.uniqueId)
+      if (finalHandIndex !== -1) {
+        const playedCard = player.hand[finalHandIndex]
+        if (playedCard) {
+          player.discardPile.push(playedCard)
+          player.hand.splice(finalHandIndex, 1)
+        }
+      }
     }
   }
 
@@ -231,6 +325,18 @@ export const useGameStore = defineStore('game', () => {
     const selectedAttack = activePokemon.attacks[attackIndex]
     if (!selectedAttack) return
 
+    // 0. Check Status Effects
+    if (activePokemon.statusEffects?.includes('paralyzed')) {
+      alert(`${activePokemon.name} is paralyzed and cannot attack!`)
+      endTurn()
+      return
+    }
+    if (activePokemon.statusEffects?.includes('asleep')) {
+      alert(`${activePokemon.name} is asleep and cannot attack!`)
+      endTurn()
+      return
+    }
+
     // Check Energy Cost (Using Energy Zone Pool)
     if (player.energyZone.length < selectedAttack.energyCost) {
       alert(`Not enough energy! Need ${selectedAttack.energyCost}, have ${player.energyZone.length}`)
@@ -239,8 +345,31 @@ export const useGameStore = defineStore('game', () => {
 
     // Deal Damage
     if (opp.active) {
-      opp.active.currentHp = (opp.active.currentHp || 0) - selectedAttack.damage
-      console.log(`${activePokemon.name} used ${selectedAttack.name} for ${selectedAttack.damage} damage!`)
+      let finalDamage = selectedAttack.damage
+
+      // Apply Type Advantages
+      if (activePokemon.element && opp.active.weakness === activePokemon.element) {
+        finalDamage *= 2
+        console.log(`Weakness! Damage doubled to ${finalDamage}`)
+      } else if (activePokemon.element && opp.active.resistance === activePokemon.element) {
+        finalDamage = Math.max(0, finalDamage - 20)
+        console.log(`Resistance! Damage reduced to ${finalDamage}`)
+      }
+
+      opp.active.currentHp = Math.max(0, (opp.active.currentHp || 0) - finalDamage)
+      addLog(`${activePokemon.name} used ${selectedAttack.name} for ${finalDamage} damage!`)
+
+      // Trigger VFX
+      triggerVfx((activePokemon.element as ElementType) || 'neutral', opp.id === 1 ? 'player1' : 'player2')
+
+      // Apply Secondary Effects
+      if (selectedAttack.effect && Math.random() < (selectedAttack.effectChance || 1)) {
+        opp.active.statusEffects = opp.active.statusEffects || []
+        if (!opp.active.statusEffects.includes(selectedAttack.effect)) {
+          opp.active.statusEffects.push(selectedAttack.effect)
+          addLog(`${opp.active.name} is now ${selectedAttack.effect}!`)
+        }
+      }
 
       // Check KO
       if (opp.active.currentHp <= 0) {
@@ -259,6 +388,7 @@ export const useGameStore = defineStore('game', () => {
   function handleKnockout(victim: Player) {
     // 1. Move Active to Discard
     if (victim.active) {
+      addLog(`${victim.active.name} was knocked out!`)
       victim.active.currentHp = 0
       victim.discardPile.push(victim.active)
       victim.active = null
@@ -273,7 +403,7 @@ export const useGameStore = defineStore('game', () => {
       const prizeCard = attacker.prizeCards.shift()
       if (prizeCard) {
         attacker.hand.push(prizeCard)
-        console.log(`${attacker.name} drew a Prize Card: ${prizeCard.name}!`)
+        addLog(`${attacker.name} drew a Prize Card!`)
       }
     }
 
@@ -395,10 +525,14 @@ export const useGameStore = defineStore('game', () => {
     turnNumber,
     winner,
     pendingEvolution,
+    gameMode,
+    logs,
+    activeVfx,
     player1,
     player2,
     currentPlayer,
     opponent,
+    setGameMode,
     setPlayerElement,
     setCustomDeck,
     endTurn,

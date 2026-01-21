@@ -1,51 +1,38 @@
-# Pokémon Card Game Implementation Plan
+# Pokémon Card Game Implementation Roadmap
 
-## Phase 1: Static Board Layout (Completed)
-- [x] Create Vue 3 project with Vite
-- [x] Implement global CSS variables and design system
-- [x] Create `PlayerBoard` component with CSS Grid layout
-- [x] Create `Zone` component for different game areas
-- [x] Create `Card` component for visual representation
-- [x] Implement responsive layout for mobile and desktop
-- [x] Add player 2 board rotation (mirroring)
+This roadmap outlines the steps to enhance the game with deeper mechanics, visual polish, and improved AI.
 
-## Phase 2: Card Models & Decks (Completed)
-- [x] Define TypeScript interfaces for `Card`, `Player`, `Attack`, etc.
-- [x] Create `cards.ts` with data for Fire, Water, Grass, Electric decks
-- [x] Implement `deckBuilder.ts` utility to generate complete decks
-- [x] Create Pinia `gameStore` to manage state
-- [x] Implement `startGame` action to initialization decks and hands
-- [x] Update components to use real data types
+## Phase 1: Game Engine Upgrades (Combat Depth)
+- [x] **1. Type Advantages (Weakness/Resistance)**
+    - Update `Card` interface in `types.ts`.
+    - Add Weakness/Resistance data to `POKEMON_DATA`.
+    - Implement bonus damage calculation in `gameStore.ts`.
+- [x] **2. Status Effects (Burn, Paralyze, Sleep, Poison)**
+    - Add `statusEffects` to `Card` interface.
+    - Implement effect application in `attack` logic.
+    - Implement effect checks at start/end of turns.
+- [x] **3. Enhanced Trainer Cards & New Elements**
+    - Add `Supporter` and more `Item` card logic.
+    - Introduce **Psychic** and **Fighting** elements.
 
-## Phase 3: Turn System and Game Logic (Next)
-- [ ] Implement `drawCard` logic (one per turn start)
-- [ ] Implement Energy attachment logic (once per turn)
-  - [ ] Validations: Only to Pokemon, only one per turn
-- [ ] Implement Bench logic
-  - [ ] Move from Hand to Active (if empty)
-  - [ ] Move from Hand to Bench (max 3)
-- [ ] Implement Attack logic
-  - [ ] Validate energy cost
-  - [ ] Calculate damage (including Weakness/Resistance)
-  - [ ] Apply damage to opponent Active HP
-  - [ ] Handle Knockout (Reduce HP <= 0)
-- [ ] Implement Prize Card logic (Take prize when opponent KO)
-- [ ] Implement Win Conditions
-  - [ ] All prizes taken
-  - [ ] Opponent has no pokemon in play
-  - [ ] Opponent deck empty (Decking out)
+## Phase 2: User Interface & Visual Polish
+- [x] **4. Battle Log (History of Moves)**
+    - Create a `BattleLog` component.
+    - Add `addLogEntry` action to `gameStore.ts`.
+- [x] **5. Attack VFX (Element-themed animations)**
+    - Implement CSS-based attack animations for different elements.
+    - Add screen shake for heavy hits.
+- [ ] **6. Hover Tooltips & Detail View**
+    - Create a tooltip system for cards and attacks.
+- [ ] **7. Sound System**
+    - Add SFX for attacks, draws, and evolution.
 
-## Phase 4: Drag & Drop
-- [ ] Implement HTML5 Drag & Drop API or use `@use-gesture`
-- [ ] Make cards in Hand draggable
-- [ ] Make Active and Bench zones drop targets
-- [ ] Make Energy cards draggable to Pokemon
-- [ ] Implement visual feedback for valid drop zones
-- [ ] Handle logic updates on successful drop
+## Phase 3: Advanced Features
+- [ ] **8. Passive Abilities**
+    - Implement unique per-card abilities that trigger on specific events.
+- [ ] **9. Improved AI (Bot Logic)**
+    - Smart benching and energy management.
+    - Strategic evolution and switching.
 
-## Phase 5: Animations and Polish
-- [ ] Add transition groups for drawing cards
-- [ ] Add attack animations (particle effects or simple CSS animations)
-- [ ] Add damage number popups
-- [ ] Add sound effects (optional)
-- [ ] Polish UI (hover states, turn indicators, winner screen)
+---
+*Progress: 55%*

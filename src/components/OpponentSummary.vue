@@ -7,6 +7,14 @@
     </div>
     
     <div class="active-preview" v-if="active">
+      <!-- Combat VFX Overlay -->
+      <div 
+        v-if="activeVfx && activeVfx.target === 'player' + playerId" 
+        class="combat-vfx-overlay" 
+        :class="activeVfx.type"
+        :key="activeVfx.timestamp"
+      ></div>
+
       <span class="pokemon-name">{{ active.name }}</span>
       <div class="hp-bar-container">
         <div class="hp-bar" :style="{ width: hpPercentage + '%' }" :class="hpClass"></div>
@@ -51,6 +59,8 @@ const props = defineProps<{
   benchCount: number
   prizeCount: number
   score: number
+  playerId: number
+  activeVfx: { type: string; target: string; timestamp: number } | null
 }>()
 
 const hpPercentage = computed(() => {
@@ -71,11 +81,12 @@ const hpClass = computed(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 20px;
+  padding: 8px 16px;
   background: var(--bg-dark);
   border-radius: var(--radius-lg);
-  border: 2px solid var(--border-color);
-  gap: 20px;
+  border: 1px solid var(--border-color);
+  gap: 12px;
+  flex-wrap: wrap; /* Allow wrapping on small screens */
 }
 
 .opponent-summary.fire { border-color: var(--fire-primary); }
@@ -121,6 +132,8 @@ const hpClass = computed(() => {
   gap: 12px;
   flex: 1;
   max-width: 300px;
+  position: relative;
+  overflow: hidden;
 }
 
 .active-preview.empty {
@@ -179,5 +192,70 @@ const hpClass = computed(() => {
 .count-value {
   font-weight: 700;
   font-size: 0.9rem;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .opponent-summary {
+    padding: 6px 10px;
+    gap: 8px;
+  }
+
+  .opponent-name {
+    font-size: 0.9rem;
+  }
+
+  .element-badge {
+    padding: 2px 6px;
+    font-size: 0.65rem;
+  }
+
+  .opponent-score {
+    padding: 2px 8px;
+    font-size: 0.75rem;
+  }
+
+  .active-preview {
+    max-width: none;
+    width: 100%;
+    order: 3; /* Move active preview below on narrow mobile */
+    justify-content: space-between;
+    background: rgba(0,0,0,0.2);
+    padding: 4px 8px;
+    border-radius: 6px;
+  }
+
+  .pokemon-name {
+    font-size: 0.8rem;
+    min-width: auto;
+  }
+
+  .hp-text {
+    font-size: 0.75rem;
+    min-width: auto;
+  }
+
+  .card-counts {
+    gap: 6px;
+  }
+
+  .count-item {
+    padding: 4px 6px;
+  }
+
+  .count-icon {
+    font-size: 0.8rem;
+  }
+
+  .count-value {
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .opponent-info {
+    width: 100%;
+    justify-content: space-between;
+  }
 }
 </style>
