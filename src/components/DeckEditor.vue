@@ -1,10 +1,10 @@
 <template>
   <div class="deck-editor">
     <div class="editor-header">
-      <h2>{{ playerLabel }}, Build Your Deck</h2>
-      <p class="subtitle">Select exactly {{ maxSelection }} Pokémon from your element pool</p>
+      <h2>{{ playerLabel }}{{ t('buildYourDeck') }}</h2>
+      <p class="subtitle">{{ t('selectExactly', { count: maxSelection }) }}</p>
       <div class="selection-counter" :class="{ complete: selectedCount === maxSelection }">
-        {{ selectedCount }} / {{ maxSelection }} Selected
+        {{ selectedCount }} / {{ maxSelection }} {{ t('selected') }}
       </div>
     </div>
 
@@ -45,7 +45,7 @@
         :disabled="selectedCount !== maxSelection"
         @click="handleConfirm"
       >
-        Confirm Deck
+        {{ t('confirmDeck') }}
       </button>
     </div>
   </div>
@@ -53,9 +53,12 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { POKEMON_DATA } from '../data/cards'
 import { getPokemonSpriteUrl } from '../utils/pokemonImages'
 import type { Card, ElementType } from '../types'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   playerNum: number

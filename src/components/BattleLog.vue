@@ -1,15 +1,15 @@
 <template>
   <div class="battle-log">
     <div class="log-header">
-      <h3>Battle Log</h3>
-      <button class="btn-clear" @click="clearLogs">Clear</button>
+      <h3>{{ t('battleLog') }}</h3>
+      <button class="btn-clear" @click="clearLogs">{{ t('clear') }}</button>
     </div>
     <div class="log-content" ref="logContainer">
       <div v-for="(log, idx) in logs" :key="idx" class="log-entry">
         {{ log }}
       </div>
       <div v-if="logs.length === 0" class="log-empty">
-        No actions yet.
+        {{ t('noActions') }}
       </div>
     </div>
   </div>
@@ -17,6 +17,9 @@
 
 <script setup lang="ts">
 import { ref, onUpdated } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   logs: string[]

@@ -2,8 +2,8 @@
   <div class="opponent-summary" :class="element">
     <div class="opponent-info">
       <span class="opponent-name">{{ name }}</span>
-      <span class="element-badge" :class="element">{{ element }}</span>
-      <span class="opponent-score">Score: {{ score }}/3</span>
+      <span class="element-badge" :class="element">{{ t(`elements.${element}`) }}</span>
+      <span class="opponent-score">{{ t('score') }}: {{ score }}/3</span>
     </div>
     
     <div class="active-preview" v-if="active">
@@ -22,7 +22,7 @@
       <span class="hp-text">{{ active.currentHp }}/{{ active.hp }}</span>
     </div>
     <div class="active-preview empty" v-else>
-      <span>No Active Pokémon</span>
+      <span>{{ t('noActivePokemon') }}</span>
     </div>
 
     <div class="card-counts">
@@ -48,7 +48,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { Card, ElementType } from '../types'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   name: string

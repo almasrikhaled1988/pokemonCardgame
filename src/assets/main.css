@@ -63,7 +63,7 @@
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Inter', 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: var(--bg-darker);
   color: var(--text-primary);
   overflow: hidden;
@@ -292,7 +292,7 @@ p {
 .zone-label {
   position: absolute;
   top: var(--spacing-sm);
-  left: var(--spacing-sm);
+  inset-inline-start: var(--spacing-sm);
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;

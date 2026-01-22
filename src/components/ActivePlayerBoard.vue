@@ -3,8 +3,8 @@
     <!-- Evolution Overlay Banner -->
     <div v-if="pendingEvolution" class="evolution-banner">
       <div class="banner-content">
-        <span class="pulse-text">✨ Select Pokémon to evolve into <strong>{{ pendingEvolution.name }}</strong></span>
-        <button class="btn-cancel-evo" @click="$emit('cancelEvolution')">Cancel</button>
+        <span class="pulse-text">{{ t('selectEvolution') }} <strong>{{ pendingEvolution.name }}</strong></span>
+        <button class="btn-cancel-evo" @click="$emit('cancelEvolution')">{{ t('cancel') }}</button>
       </div>
     </div>
     <!-- Main Play Area -->
@@ -14,19 +14,19 @@
         <!-- Player Info (Moved from App.vue) -->
         <div class="player-info-integrated">
           <div class="pi-left">
-            <span class="pi-your-turn">Your Turn</span>
+            <span class="pi-your-turn">{{ t('yourTurn') }}</span>
             <span class="pi-name">{{ name }}</span>
           </div>
           <div class="pi-center">
-            <span class="pi-turn-number">Turn {{ turnNumber }}</span>
+            <span class="pi-turn-number">{{ t('turn') }} {{ turnNumber }}</span>
           </div>
           <div class="pi-right">
-            <span class="pi-score">Score: {{ score }}/3</span>
-            <button class="pi-mute" @click="toggleMute" :title="isMuted ? 'Unmute' : 'Mute'">
+            <span class="pi-score">{{ t('score') }}: {{ score }}/3</span>
+            <button class="pi-mute" @click="toggleMute" :title="isMuted ? t('unmute') : t('mute')">
               {{ isMuted ? '🔇' : '🔊' }}
             </button>
             <button class="pi-end-turn" @click="$emit('endTurn')" :disabled="isBotTurn">
-              End Turn
+              {{ t('endTurn') }}
             </button>
           </div>
         </div>
@@ -128,7 +128,7 @@
             </div>
             
             <div v-else class="empty-active">
-              <span>Play a Pokémon from your hand!</span>
+              <span>{{ t('playPokemonFromHand') }}</span>
             </div>
           </div>
 
@@ -211,8 +211,8 @@
     <!-- Hand -->
     <div class="hand-section">
       <div class="hand-header">
-        <span class="hand-label">YOUR HAND</span>
-        <span class="hand-count">{{ hand.length }} cards</span>
+        <span class="hand-label">{{ t('yourHand') }}</span>
+        <span class="hand-count">{{ hand.length }} {{ t('cards') }}</span>
       </div>
       <div class="hand-cards">
         <div 
@@ -258,7 +258,7 @@
                 class="hc-energy-text"
                 @mouseenter="handleMouseEnter($event, card)"
                 @mouseleave="handleMouseLeave"
-              >Energy</div>
+              >{{ t('energy') }}</div>
             </div>
           </template>
           <template v-else>
@@ -279,11 +279,14 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { Card } from '../types'
 import { getPokemonImageUrl, getPokemonSpriteUrl } from '../utils/pokemonImages'
 import { soundManager } from '../utils/soundManager'
 import { useGameStore } from '../stores/gameStore'
 import BattleLog from './BattleLog.vue'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   deck: Card[]

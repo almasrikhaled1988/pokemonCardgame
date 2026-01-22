@@ -3,8 +3,13 @@
     <div class="game-container">
       <!-- Element Selection Screen -->
       <div v-if="gameStore.gamePhase === 'setup'" class="setup-screen">
-        <h1 class="title">Pokémon Card Game</h1>
-        <p class="subtitle">Choose your element</p>
+        <h1 class="title">{{ t('title') }}</h1>
+        <div class="lang-switch">
+          <button class="btn lang-btn" :class="{ active: locale === 'en' }" @click="locale = 'en'">🇺🇸 EN</button>
+          <button class="btn lang-btn" :class="{ active: locale === 'de' }" @click="locale = 'de'">🇩🇪 DE</button>
+          <button class="btn lang-btn" :class="{ active: locale === 'ar' }" @click="locale = 'ar'">🇸🇦 AR</button>
+        </div>
+        <p class="subtitle">{{ t('chooseElement') }}</p>
 
         <div class="game-mode-selection">
           <button 
@@ -12,20 +17,20 @@
             :class="{ selected: gameStore.gameMode === 'single' }"
             @click="gameStore.setGameMode('single')"
           >
-            👤 Single Player (vs Bot)
+            {{ t('singlePlayer') }}
           </button>
           <button 
             class="btn mode-btn" 
             :class="{ selected: gameStore.gameMode === 'multi' }"
             @click="gameStore.setGameMode('multi')"
           >
-            👥 Two Players
+            {{ t('twoPlayers') }}
           </button>
         </div>
         
         <div class="element-selection">
           <div class="player-selection">
-            <h2>Player 1</h2>
+            <h2>{{ t('player1') }}</h2>
             <div class="element-buttons">
               <button 
                 v-for="element in elements" 
@@ -34,15 +39,15 @@
                 :class="[`btn-${element}`, { selected: player1Element === element }]"
                 @click="selectElement(1, element)"
               >
-                {{ getElementEmoji(element) }} {{ element }}
+                {{ getElementEmoji(element) }} {{ t(`elements.${element}`) }}
               </button>
             </div>
           </div>
           
-          <div class="vs-divider">VS</div>
+          <div class="vs-divider">{{ t('vs') }}</div>
           
           <div class="player-selection" :class="{ 'bot-selection': gameStore.gameMode === 'single' }">
-            <h2>{{ gameStore.gameMode === 'single' ? 'Bot' : 'Player 2' }}</h2>
+            <h2>{{ gameStore.gameMode === 'single' ? t('bot') : t('player2') }}</h2>
             <div class="element-buttons">
               <button 
                 v-for="element in elements" 
@@ -51,11 +56,11 @@
                 :class="[`btn-${element}`, { selected: player2Element === element }]"
                 @click="selectElement(2, element)"
               >
-                {{ getElementEmoji(element) }} {{ element }}
+                {{ getElementEmoji(element) }} {{ t(`elements.${element}`) }}
               </button>
             </div>
             <div v-if="gameStore.gameMode === 'single'" class="bot-hint">
-              The bot will play with this element!
+              {{ t('botHint') }}
             </div>
           </div>
         </div>
@@ -65,7 +70,7 @@
           :disabled="!player1Element || !player2Element"
           @click="goToDeckBuilding"
         >
-          Next: Build Decks
+          {{ t('nextBuildDecks') }}
         </button>
       </div>
 
@@ -74,7 +79,7 @@
         <div v-if="buildingStep === 1">
           <DeckEditor
             :player-num="1"
-            player-label="Player 1"
+            :player-label="t('player1')"
             :element="player1Element!"
             @confirm="handleDeckConfirm(1, $event)"
           />
@@ -82,7 +87,7 @@
         <div v-else-if="buildingStep === 2">
           <DeckEditor
             :player-num="2"
-            player-label="Player 2"
+            :player-label="t('player2')"
             :element="player2Element!"
             @confirm="handleDeckConfirm(2, $event)"
           />
@@ -113,7 +118,7 @@
             <span class="thinking-dot"></span>
             <span class="thinking-dot"></span>
             <span class="thinking-dot"></span>
-            <span class="thinking-text">Bot is thinking...</span>
+            <span class="thinking-text">{{ t('thinking') }}</span>
           </div>
         </div>
 
@@ -144,9 +149,9 @@
 
       <!-- Game Over Screen -->
       <div v-else class="game-over-screen">
-        <h1>🏆 Game Over!</h1>
-        <p class="winner-text">{{ winner }} Wins!</p>
-        <button class="btn btn-primary" @click="resetGame">Play Again</button>
+        <h1>🏆 {{ t('gameOver') }}</h1>
+        <p class="winner-text">{{ t('wins', { winner }) }}</p>
+        <button class="btn btn-primary" @click="resetGame">{{ t('playAgain') }}</button>
       </div>
     </div>
     <CardTooltip />
@@ -163,9 +168,22 @@ import ActivePlayerBoard from './components/ActivePlayerBoard.vue'
 import DeckEditor from './components/DeckEditor.vue'
 import CardTooltip from './components/CardTooltip.vue'
 import CardDetailModal from './components/CardDetailModal.vue'
+import { useI18n } from 'vue-i18n'
 import type { ElementType, Card } from './types'
 
 const gameStore = useGameStore()
+const { t, locale } = useI18n()
+
+// Watch for locale changes to set document direction
+watch(locale, (newLocale) => {
+  if (newLocale === 'ar') {
+    document.documentElement.dir = 'rtl'
+    document.documentElement.lang = 'ar'
+  } else {
+    document.documentElement.dir = 'ltr'
+    document.documentElement.lang = newLocale
+  }
+}, { immediate: true })
 
 // Local state for setup selection
 const player1Element = ref<ElementType | null>(null)
@@ -282,6 +300,49 @@ function getElementEmoji(element: string) {
   font-size: 1rem;
   color: var(--text-secondary);
   margin-bottom: 20px;
+}
+
+.lang-switch {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 32px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 8px;
+  border-radius: 30px;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+  border: 1px solid var(--border-color);
+}
+
+.lang-btn {
+  background: transparent;
+  border: none;
+  padding: 8px 16px;
+  font-size: 1rem;
+  opacity: 0.6;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 20px;
+  color: var(--text-secondary);
+  font-family: 'Cairo', 'Inter', sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lang-btn:hover {
+  opacity: 0.9;
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateY(-1px);
+}
+
+.lang-btn.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  opacity: 1;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(118, 75, 162, 0.4);
 }
 
 .element-selection {
