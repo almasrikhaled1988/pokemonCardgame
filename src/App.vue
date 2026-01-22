@@ -149,6 +149,8 @@
         <button class="btn btn-primary" @click="resetGame">Play Again</button>
       </div>
     </div>
+    <CardTooltip />
+    <CardDetailModal />
   </div>
 </template>
 
@@ -159,6 +161,8 @@ import { playBotTurn } from './services/botLogic'
 import OpponentSummary from './components/OpponentSummary.vue'
 import ActivePlayerBoard from './components/ActivePlayerBoard.vue'
 import DeckEditor from './components/DeckEditor.vue'
+import CardTooltip from './components/CardTooltip.vue'
+import CardDetailModal from './components/CardDetailModal.vue'
 import type { ElementType, Card } from './types'
 
 const gameStore = useGameStore()

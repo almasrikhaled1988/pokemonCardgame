@@ -22,17 +22,21 @@ This roadmap outlines the steps to enhance the game with deeper mechanics, visua
 - [x] **5. Attack VFX (Element-themed animations)**
     - Implement CSS-based attack animations for different elements.
     - Add screen shake for heavy hits.
-- [ ] **6. Hover Tooltips & Detail View**
+- [x] **6. Hover Tooltips & Detail View**
     - Create a tooltip system for cards and attacks.
-- [ ] **7. Sound System**
+    - Implement a full-screen detail view (modal).
+- [x] **7. Sound System**
     - Add SFX for attacks, draws, and evolution.
+    - Implement a SoundManager with mute functionality.
 
 ## Phase 3: Advanced Features
-- [ ] **8. Passive Abilities**
-    - Implement unique per-card abilities that trigger on specific events.
-- [ ] **9. Improved AI (Bot Logic)**
+- [x] **8. Passive Abilities**
+    - Implement unique per-card abilities (On Play, Turn Start, Passive).
+    - Added abilities: Photosynthesis (Heal), Roar (Damage), Rain Dance (Draw), Static (Paralyze).
+- [x] **9. Improved AI (Bot Logic)**
     - Smart benching and energy management.
-    - Strategic evolution and switching.
+    - Strategic evolution and switching (Switch card usage).
+    - Aggressive KO targeting and smart Trainer play.
 
 ---
-*Progress: 55%*
+*Progress: 100% (Alpha Complete)*

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { createDeck, createStarterPokemon, createStarterEnergy, createPrizePool } from '../utils/deckBuilder'
+import { soundManager } from '../utils/soundManager'
 import type { Player, ElementType, Card } from '../types'
 
 export const useGameStore = defineStore('game', () => {
@@ -13,6 +14,9 @@ export const useGameStore = defineStore('game', () => {
   const gameMode = ref<'single' | 'multi'>('multi')
   const logs = ref<string[]>([])
   const activeVfx = ref<{ type: ElementType | 'neutral'; target: 'player1' | 'player2'; timestamp: number } | null>(null)
+  const hoveredCard = ref<Card | null>(null)
+  const hoveredCardPosition = ref<{ x: number, y: number } | null>(null)
+  const selectedCard = ref<Card | null>(null)
 
   // Player 1 state
   const player1 = ref<Player>({
@@ -107,7 +111,10 @@ export const useGameStore = defineStore('game', () => {
     for (let i = 0; i < count; i++) {
       if (player.deck.length > 0) {
         const card = player.deck.pop()
-        if (card) player.hand.push(card)
+        if (card) {
+          player.hand.push(card)
+          soundManager.play('draw')
+        }
       }
     }
   }
@@ -132,8 +139,55 @@ export const useGameStore = defineStore('game', () => {
       turnNumber.value++
     }
 
-    // Draw card for next player at start of turn
-    drawCard(currentPlayer.value, 1)
+    startTurn()
+  }
+
+  function startTurn() {
+    const player = currentPlayer.value
+    const opp = opponent.value
+
+    addLog(`Start of ${player.name}'s turn.`)
+
+    // 1. Trigger "Turn Start" Abilities
+    if (player.active?.ability?.effect === 'heal') {
+      const healAmount = player.active.ability.value || 0
+      player.active.currentHp = Math.min(player.active.hp || 0, (player.active.currentHp || 0) + healAmount)
+      addLog(`${player.active.name} used ${player.active.ability.name} and healed ${healAmount} HP.`)
+    }
+
+    // 2. Draw card for next player at start of turn
+    drawCard(player, 1)
+  }
+
+  function triggerOnPlayAbility(card: Card) {
+    if (!card.ability) return
+    const player = currentPlayer.value
+    const opp = opponent.value
+
+    addLog(`${card.name} activated ${card.ability.name}!`)
+
+    switch (card.ability.effect) {
+      case 'damage':
+        if (opp.active) {
+          const dmg = card.ability.value || 0
+          opp.active.currentHp = Math.max(0, (opp.active.currentHp || 0) - dmg)
+          addLog(`${opp.active.name} took ${dmg} damage.`)
+          if (opp.active.currentHp <= 0) handleKnockout(opp)
+        }
+        break
+      case 'draw':
+        drawCard(player, card.ability.value || 0)
+        break
+      case 'status':
+        if (opp.active) {
+          opp.active.statusEffects = opp.active.statusEffects || []
+          if (!opp.active.statusEffects.includes('paralyzed')) {
+            opp.active.statusEffects.push('paralyzed')
+            addLog(`${opp.active.name} is paralyzed!`)
+          }
+        }
+        break
+    }
   }
 
   function applyFinalStatusDamage(player: Player) {
@@ -207,6 +261,7 @@ export const useGameStore = defineStore('game', () => {
     currentTurn.value = 1
     logs.value = []
     addLog("Game started!")
+    soundManager.play('start')
   }
 
   // --- Game Logic Actions ---
@@ -235,6 +290,8 @@ export const useGameStore = defineStore('game', () => {
         player.active = card
         player.hand.splice(cardIndex, 1)
         addLog(`${player.name} played ${card.name} as active.`)
+        soundManager.play('click')
+        triggerOnPlayAbility(card)
         return
       }
 
@@ -246,6 +303,8 @@ export const useGameStore = defineStore('game', () => {
         player.bank.push(card)
         player.hand.splice(cardIndex, 1)
         addLog(`${player.name} benched ${card.name}.`)
+        soundManager.play('click')
+        triggerOnPlayAbility(card)
         return
       }
 
@@ -263,6 +322,7 @@ export const useGameStore = defineStore('game', () => {
       player.hand.splice(cardIndex, 1)
       player.energyAttachedThisTurn = true
       addLog(`${player.name} added ${card.element} energy.`)
+      soundManager.play('click')
     }
 
     // 3. Handle Trainer (Item & Supporter)
@@ -362,6 +422,14 @@ export const useGameStore = defineStore('game', () => {
       // Trigger VFX
       triggerVfx((activePokemon.element as ElementType) || 'neutral', opp.id === 1 ? 'player1' : 'player2')
 
+      // Play Sound (element-specific or generic attack)
+      const elementSound = activePokemon.element as string
+      if (['fire', 'water', 'grass', 'electric', 'psychic', 'fighting'].includes(elementSound)) {
+        soundManager.play(elementSound)
+      } else {
+        soundManager.play('attack')
+      }
+
       // Apply Secondary Effects
       if (selectedAttack.effect && Math.random() < (selectedAttack.effectChance || 1)) {
         opp.active.statusEffects = opp.active.statusEffects || []
@@ -392,6 +460,7 @@ export const useGameStore = defineStore('game', () => {
       victim.active.currentHp = 0
       victim.discardPile.push(victim.active)
       victim.active = null
+      soundManager.play('ko')
     }
 
     // 2. Attacker gains 1 point and draws a Prize Card
@@ -513,6 +582,8 @@ export const useGameStore = defineStore('game', () => {
     // Reset pending
     pendingEvolution.value = null
     console.log(`Evolved ${targetCard.name} into ${evolvedCard.name}!`)
+    soundManager.play('evolve')
+    triggerOnPlayAbility(evolvedCard)
   }
 
   function cancelEvolution() {
@@ -528,6 +599,9 @@ export const useGameStore = defineStore('game', () => {
     gameMode,
     logs,
     activeVfx,
+    hoveredCard,
+    hoveredCardPosition,
+    selectedCard,
     player1,
     player2,
     currentPlayer,

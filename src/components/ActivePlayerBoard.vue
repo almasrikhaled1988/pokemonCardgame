@@ -22,6 +22,9 @@
           </div>
           <div class="pi-right">
             <span class="pi-score">Score: {{ score }}/3</span>
+            <button class="pi-mute" @click="toggleMute" :title="isMuted ? 'Unmute' : 'Mute'">
+              {{ isMuted ? '🔇' : '🔊' }}
+            </button>
             <button class="pi-end-turn" @click="$emit('endTurn')" :disabled="isBotTurn">
               End Turn
             </button>
@@ -63,10 +66,18 @@
               ></div>
 
               <!-- Large Active Card -->
-              <div class="active-card" :class="active.element">
+              <div 
+                class="active-card" 
+                :class="active.element"
+                @contextmenu.prevent="handleRightClick($event, active)"
+              >
                 <div class="card-top">
                   <div class="card-name-group">
-                    <span class="card-name">{{ active.name }}</span>
+                    <span 
+                      class="card-name"
+                      @mouseenter="handleMouseEnter($event, active)"
+                      @mouseleave="handleMouseLeave"
+                    >{{ active.name }}</span>
                     <span v-if="active.stage" class="card-stage-label">{{ active.stage }}</span>
                   </div>
                   <span class="card-hp" :class="hpClass">{{ active.currentHp }}/{{ active.hp }} HP</span>
@@ -155,10 +166,21 @@
               :class="{ filled: slot, 'evo-target': pendingEvolution && slot }"
               @click="handleBenchSlotClick(slot)"
             >
-              <div v-if="slot" class="active-card bench-version" :class="slot.element">
+              <div 
+                v-if="slot" 
+                class="active-card bench-version" 
+                :class="slot.element"
+                @mouseenter="handleMouseEnter($event, slot)"
+                @mouseleave="handleMouseLeave"
+                @contextmenu.prevent="handleRightClick($event, slot)"
+              >
                 <div class="card-top">
                   <div class="card-name-group">
-                    <span class="card-name">{{ slot.name }}</span>
+                    <span 
+                      class="card-name"
+                      @mouseenter="handleMouseEnter($event, slot)"
+                      @mouseleave="handleMouseLeave"
+                    >{{ slot.name }}</span>
                   </div>
                   <span class="card-hp" :class="getCardHpClass(slot)">{{ slot.currentHp }}/{{ slot.hp }}</span>
                 </div>
@@ -199,12 +221,17 @@
           class="hand-card"
           :class="[card.type, card.element, card.category, card.stage, { 'pending-source': pendingEvolution?.uniqueId === card.uniqueId }]"
           @click="$emit('playCard', card)"
+          @contextmenu.prevent="handleRightClick($event, card)"
         >
           <template v-if="card.type === 'pokemon'">
             <div class="active-card hand-version" :class="card.element">
               <div class="card-top">
                 <div class="card-name-group">
-                  <span class="card-name">{{ card.name }}</span>
+                  <span 
+                    class="card-name"
+                    @mouseenter="handleMouseEnter($event, card)"
+                    @mouseleave="handleMouseLeave"
+                  >{{ card.name }}</span>
                   <span v-if="card.stage" class="card-stage-label">{{ card.stage }}</span>
                 </div>
                 <span class="card-hp" :class="getCardHpClass(card)">{{ card.hp }} HP</span>
@@ -227,13 +254,21 @@
           <template v-else-if="card.type === 'energy'">
             <div class="hc-energy-card">
               <div class="hc-energy-icon">{{ getEmoji(card.element) }}</div>
-              <div class="hc-energy-text">Energy</div>
+              <div 
+                class="hc-energy-text"
+                @mouseenter="handleMouseEnter($event, card)"
+                @mouseleave="handleMouseLeave"
+              >Energy</div>
             </div>
           </template>
           <template v-else>
             <div class="hc-trainer-card">
               <div class="hc-trainer-icon">📜</div>
-              <div class="hc-trainer">{{ card.name }}</div>
+              <div 
+                class="hc-trainer"
+                @mouseenter="handleMouseEnter($event, card)"
+                @mouseleave="handleMouseLeave"
+              >{{ card.name }}</div>
             </div>
           </template>
         </div>
@@ -243,9 +278,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { Card } from '../types'
 import { getPokemonImageUrl, getPokemonSpriteUrl } from '../utils/pokemonImages'
+import { soundManager } from '../utils/soundManager'
+import { useGameStore } from '../stores/gameStore'
 import BattleLog from './BattleLog.vue'
 
 const props = defineProps<{
@@ -257,7 +294,6 @@ const props = defineProps<{
   discardPile: Card[]
   prizeCards: Card[]
   pendingEvolution: Card | null
-  // Added props
   name: string
   score: number
   turnNumber: number
@@ -276,6 +312,29 @@ const emit = defineEmits<{
   (e: 'cancelEvolution'): void
   (e: 'endTurn'): void
 }>()
+
+const store = useGameStore()
+const isMuted = ref(!soundManager.isEnabled())
+
+function toggleMute() {
+  soundManager.toggle()
+  isMuted.value = !soundManager.isEnabled()
+}
+
+
+function handleMouseEnter(event: MouseEvent, card: Card) {
+  store.hoveredCard = card
+  store.hoveredCardPosition = { x: event.clientX, y: event.clientY }
+}
+
+function handleMouseLeave() {
+  store.hoveredCard = null
+  store.hoveredCardPosition = null
+}
+
+function handleRightClick(event: MouseEvent, card: Card) {
+  store.selectedCard = card;
+}
 
 const hpPercent = computed(() => {
   if (!props.active || !props.active.hp) return 0
@@ -527,6 +586,22 @@ function handleImageError(e: Event) {
 .pi-name { font-weight: 700; font-size: 1.1rem; }
 .pi-turn-number { font-size: 0.8rem; opacity: 0.6; font-weight: 800; }
 .pi-score { font-weight: 700; color: #4ade80; }
+.pi-mute {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.pi-mute:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
 .pi-end-turn {
   background: #333;
   border: 1px solid #555;

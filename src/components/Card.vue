@@ -3,11 +3,16 @@
     v-if="card"
     :class="cardClasses"
     @click="$emit('click', card)"
+    @contextmenu.prevent="handleRightClick"
   >
     <!-- Pokemon Card -->
     <div v-if="card.type === 'pokemon'" class="card-content">
       <div class="card-header">
-        <span class="card-name">{{ card.name }}</span>
+        <span 
+          class="card-name"
+          @mouseenter="handleMouseEnter"
+          @mouseleave="handleMouseLeave"
+        >{{ card.name }}</span>
         <span class="card-hp">{{ card.currentHp }}/{{ card.hp }} HP</span>
       </div>
       
@@ -38,13 +43,22 @@
     </div>
     
     <!-- Energy Card -->
-    <div v-else-if="card.type === 'energy'" class="energy-card-content">
+    <div 
+      v-else-if="card.type === 'energy'" 
+      class="energy-card-content"
+      @mouseenter="handleMouseEnter"
+      @mouseleave="handleMouseLeave"
+    >
       {{ getElementEmoji(card.element as string) }}
     </div>
     
     <!-- Trainer Card -->
     <div v-else-if="card.category === 'trainer'" class="trainer-card-content">
-      <div class="trainer-name">{{ card.name }}</div>
+      <div 
+        class="trainer-name"
+        @mouseenter="handleMouseEnter"
+        @mouseleave="handleMouseLeave"
+      >{{ card.name }}</div>
       <div class="trainer-effect">{{ card.description }}</div>
     </div>
   </div>
@@ -53,6 +67,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Card } from '../types'
+import { useGameStore } from '../stores/gameStore'
 
 const props = withDefaults(defineProps<{
   card: Card
@@ -60,6 +75,22 @@ const props = withDefaults(defineProps<{
 }>(), {
   size: 'normal'
 })
+
+const store = useGameStore()
+
+function handleMouseEnter(event: MouseEvent) {
+  store.hoveredCard = props.card
+  store.hoveredCardPosition = { x: event.clientX, y: event.clientY }
+}
+
+function handleMouseLeave() {
+  store.hoveredCard = null
+  store.hoveredCardPosition = null
+}
+
+function handleRightClick() {
+  store.selectedCard = props.card
+}
 
 defineEmits<{
   (e: 'click', card: Card): void

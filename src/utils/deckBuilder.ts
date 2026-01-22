@@ -2,11 +2,13 @@ import { POKEMON_DATA, TRAINER_CARDS } from '../data/cards'
 import type { Card, ElementType } from '../types'
 
 // Starter Pokemon for each element
-const STARTERS: Record<ElementType, { id: string; name: string; hp: number; attacks: { name: string; damage: number; energyCost: number }[] }> = {
-    fire: { id: 'starter-fire', name: 'Charmander', hp: 50, attacks: [{ name: 'Scratch', damage: 10, energyCost: 1 }, { name: 'Ember', damage: 30, energyCost: 2 }] },
-    water: { id: 'starter-water', name: 'Squirtle', hp: 60, attacks: [{ name: 'Tackle', damage: 10, energyCost: 1 }, { name: 'Water Gun', damage: 20, energyCost: 2 }] },
-    grass: { id: 'starter-grass', name: 'Bulbasaur', hp: 60, attacks: [{ name: 'Tackle', damage: 10, energyCost: 1 }, { name: 'Vine Whip', damage: 30, energyCost: 2 }] },
-    electric: { id: 'starter-electric', name: 'Pikachu', hp: 50, attacks: [{ name: 'Quick Attack', damage: 10, energyCost: 1 }, { name: 'Thunderbolt', damage: 40, energyCost: 3 }] }
+const STARTERS: Record<ElementType, { id: string; name: string; hp: number; attacks: { name: string; damage: number; energyCost: number; description?: string }[] }> = {
+    fire: { id: 'starter-fire', name: 'Charmander', hp: 50, attacks: [{ name: 'Scratch', damage: 10, energyCost: 1, description: 'Slices with sharp claws.' }, { name: 'Ember', damage: 30, energyCost: 2, description: 'A small fire attack.' }] },
+    water: { id: 'starter-water', name: 'Squirtle', hp: 60, attacks: [{ name: 'Tackle', damage: 10, energyCost: 1, description: 'Charges the opponent.' }, { name: 'Water Gun', damage: 20, energyCost: 2, description: 'Squirts water at high pressure.' }] },
+    grass: { id: 'starter-grass', name: 'Bulbasaur', hp: 60, attacks: [{ name: 'Tackle', damage: 10, energyCost: 1, description: 'Charges the opponent.' }, { name: 'Vine Whip', damage: 30, energyCost: 2, description: 'Strikes with vines.' }] },
+    electric: { id: 'starter-electric', name: 'Pikachu', hp: 50, attacks: [{ name: 'Quick Attack', damage: 10, energyCost: 1, description: 'Strikes with lightning speed.' }, { name: 'Thunderbolt', damage: 40, energyCost: 3, description: 'A powerful blast of electricity.' }] },
+    psychic: { id: 'starter-psychic', name: 'Abra', hp: 40, attacks: [{ name: 'Teleport', damage: 0, energyCost: 1, description: 'Teleports away to safety.' }] },
+    fighting: { id: 'starter-fighting', name: 'Machop', hp: 60, attacks: [{ name: 'Kick', damage: 20, energyCost: 1, description: 'A swift kick.' }, { name: 'Low Kick', damage: 30, energyCost: 2, description: 'A low sweeping kick.' }] }
 }
 
 export function createStarterPokemon(element: ElementType): Card {

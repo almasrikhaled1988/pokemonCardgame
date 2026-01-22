@@ -6,6 +6,14 @@ export interface Attack {
     energyCost: number;
     effect?: StatusEffect;
     effectChance?: number; // 0 to 1
+    description?: string;
+}
+
+export interface Ability {
+    name: string;
+    description: string;
+    effect: 'draw' | 'heal' | 'damage' | 'status' | 'passive';
+    value?: number;
 }
 
 export interface Card {
@@ -25,6 +33,7 @@ export interface Card {
     weakness?: ElementType;
     resistance?: ElementType;
     statusEffects?: StatusEffect[];
+    ability?: Ability;
 
     // Trainer specific
     description?: string;
