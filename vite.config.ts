@@ -14,6 +14,7 @@ export default defineConfig({
   ],
   server: {
     port: 5175,
+    host: true,
     allowedHosts: ['pokegame.khaledalmasri.eu']
   },
   resolve: {

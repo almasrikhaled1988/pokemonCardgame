@@ -1,18 +1,18 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { createDeck, createStarterPokemon, createStarterEnergy, createPrizePool } from '../utils/deckBuilder'
-import { soundManager } from '../utils/soundManager'
-import type { Player, ElementType, Card } from '../types'
+import type { Player, ElementType, Card, GameMode, PlayerRole } from '../types'
 import { soundService } from '../services/soundService'
 
 export const useGameStore = defineStore('game', () => {
   // Game state
   const currentTurn = ref<1 | 2>(1)
-  const gamePhase = ref<'setup' | 'deckBuilding' | 'playing' | 'ended'>('setup')
+  const gamePhase = ref<'setup' | 'deckBuilding' | 'lobby' | 'playing' | 'ended'>('setup')
   const turnNumber = ref(1)
   const winner = ref<string | null>(null)
   const pendingEvolution = ref<Card | null>(null)
-  const gameMode = ref<'single' | 'multi'>('multi')
+  const gameMode = ref<GameMode>('local')
+  const playerRole = ref<PlayerRole>(null)
   const logs = ref<string[]>([])
   const activeVfx = ref<{ type: ElementType | 'neutral'; target: 'player1' | 'player2'; timestamp: number } | null>(null)
   const hoveredCard = ref<Card | null>(null)
@@ -53,14 +53,33 @@ export const useGameStore = defineStore('game', () => {
     score: 0
   })
 
-  // Get current player
+  // Get current player (whose turn it is)
   const currentPlayer = computed(() => {
     return currentTurn.value === 1 ? player1.value : player2.value
   })
 
-  // Get opponent
+  // Get opponent (of the current turn player)
   const opponent = computed(() => {
     return currentTurn.value === 1 ? player2.value : player1.value
+  })
+
+  // Online mode: "my" player (based on role, not turn)
+  const myPlayer = computed(() => {
+    if (gameMode.value !== 'online') return currentPlayer.value
+    return playerRole.value === 'host' ? player1.value : player2.value
+  })
+
+  // Online mode: "remote" player
+  const remotePlayer = computed(() => {
+    if (gameMode.value !== 'online') return opponent.value
+    return playerRole.value === 'host' ? player2.value : player1.value
+  })
+
+  // Online mode: is it my turn?
+  const isMyTurn = computed(() => {
+    if (gameMode.value !== 'online') return true
+    const myId = playerRole.value === 'host' ? 1 : 2
+    return currentTurn.value === myId
   })
 
   // Custom Deck Selections
@@ -81,11 +100,14 @@ export const useGameStore = defineStore('game', () => {
     if (logs.value.length > 50) logs.value.pop()
   }
 
-  function setGameMode(mode: 'single' | 'multi') {
+  function setGameMode(mode: GameMode) {
     gameMode.value = mode
     if (mode === 'single') {
       player2.value.isBot = true
       player2.value.name = 'Bot'
+    } else if (mode === 'online') {
+      player2.value.isBot = false
+      player2.value.name = 'Opponent'
     } else {
       player2.value.isBot = false
       player2.value.name = 'Player 2'
@@ -592,6 +614,7 @@ export const useGameStore = defineStore('game', () => {
     winner,
     pendingEvolution,
     gameMode,
+    playerRole,
     logs,
     activeVfx,
     hoveredCard,
@@ -601,6 +624,9 @@ export const useGameStore = defineStore('game', () => {
     player2,
     currentPlayer,
     opponent,
+    myPlayer,
+    remotePlayer,
+    isMyTurn,
     setGameMode,
     setPlayerElement,
     setCustomDeck,

@@ -42,6 +42,10 @@ export interface Card {
 
 export type StatusEffect = 'burned' | 'paralyzed' | 'asleep' | 'poisoned';
 
+export type GameMode = 'single' | 'local' | 'online'
+export type PlayerRole = 'host' | 'guest' | null
+export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
+
 export interface Player {
     id: number;
     name: string;
