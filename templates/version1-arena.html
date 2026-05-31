@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pokémon Card Game – Arena Layout (V1)</title>
+  <style>
+    :root {
+      --fire: #ef4444;
+      --water: #3b82f6;
+      --grass: #22c55e;
+      --electric: #eab308;
+      --bg-dark: #0f0f1a;
+      --bg-card: #1a1a2e;
+      --bg-zone: rgba(255,255,255,0.03);
+      --border: rgba(255,255,255,0.1);
+      --text-primary: #fff;
+      --text-secondary: rgba(255,255,255,0.5);
+      --accent: #667eea;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ===== LAYOUT: Stadium / Arena concept =====
+       The board is split into two halves (opponent top, player bottom)
+       with a central "battlefield" strip where active Pokémon face off.
+    */
+
+    .game-board {
+      display: grid;
+      grid-template-rows: 80px 1fr 100px 1fr 140px;
+      height: 100vh;
+      padding: 8px;
+      gap: 6px;
+      background:
+        radial-gradient(ellipse at 50% 50%, rgba(102,126,234,0.06) 0%, transparent 70%),
+        var(--bg-dark);
+    }
+
+    /* --- Top Bar (Opponent Info) --- */
+    .opponent-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      background: rgba(0,0,0,0.5);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+
+    .player-identity {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--fire), #ff6b6b);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      border: 2px solid rgba(255,255,255,0.2);
+    }
+
+    .player-name { font-weight: 700; font-size: 1rem; }
+    .player-element { font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; }
+
+    .stats-row {
+      display: flex;
+      gap: 20px;
+    }
+
+    .stat {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 1.2rem;
+      font-weight: 800;
+    }
+
+    .stat-label {
+      font-size: 0.65rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+    }
+
+    /* --- Opponent Half --- */
+    .opponent-half {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      opacity: 0.7;
+      filter: brightness(0.8);
+    }
+
+    .card-back-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .card-back-small {
+      width: 36px;
+      height: 50px;
+      background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+
+    .opponent-active-slot {
+      width: 140px;
+      height: 180px;
+      background: rgba(255,255,255,0.03);
+      border: 2px solid rgba(239,68,68,0.4);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .opponent-pokemon {
+      text-align: center;
+    }
+
+    .opponent-pokemon .poke-img {
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+      filter: drop-shadow(0 4px 12px rgba(239,68,68,0.4));
+      transform: scaleX(-1); /* Face the player */
+    }
+
+    .opponent-pokemon .poke-name {
+      font-size: 0.8rem;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+
+    .opponent-pokemon .poke-hp-bar {
+      width: 100px;
+      height: 6px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 3px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+
+    .opponent-pokemon .poke-hp-fill {
+      height: 100%;
+      width: 65%;
+      background: #fbbf24;
+      border-radius: 3px;
+    }
+
+    .opponent-bench {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .bench-mini {
+      width: 44px;
+      height: 44px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+    }
+
+    /* --- Battlefield Strip (Center) --- */
+    .battlefield {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      background:
+        linear-gradient(90deg, transparent 0%, rgba(102,126,234,0.05) 50%, transparent 100%);
+      border-top: 1px solid rgba(255,255,255,0.05);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .battlefield::before {
+      content: "⚔️ BATTLE";
+      position: absolute;
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 3px;
+      color: rgba(255,255,255,0.15);
+      text-transform: uppercase;
+    }
+
+    .vs-badge {
+      width: 50px;
+      height: 50px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 0.9rem;
+      box-shadow: 0 0 30px rgba(102,126,234,0.4);
+      z-index: 10;
+    }
+
+    /* --- Player Half --- */
+    .player-half {
+      display: grid;
+      grid-template-columns: 100px 1fr 100px;
+      gap: 12px;
+      align-items: center;
+    }
+
+    /* Side zones */
+    .side-zone {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .zone-box {
+      background: var(--bg-zone);
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      text-align: center;
+      width: 80px;
+    }
+
+    .zone-box .zone-icon { font-size: 1.4rem; }
+    .zone-box .zone-count { font-size: 0.8rem; font-weight: 700; margin-top: 4px; }
+    .zone-box .zone-label { font-size: 0.55rem; color: var(--text-secondary); text-transform: uppercase; margin-top: 2px; }
+
+    /* Active card (player) */
+    .player-active-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .active-card {
+      width: 200px;
+      background: var(--bg-card);
+      border: 3px solid var(--water);
+      border-radius: 16px;
+      padding: 12px;
+      box-shadow: 0 0 30px rgba(59,130,246,0.2);
+    }
+
+    .active-card .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .active-card .card-name { font-size: 1.1rem; font-weight: 800; }
+    .active-card .card-hp { font-size: 0.85rem; color: #4ade80; font-weight: 700; }
+
+    .active-card .card-image {
+      width: 100%;
+      height: 100px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 8px;
+      overflow: hidden;
+    }
+
+    .active-card .card-image img {
+      height: 90px;
+      object-fit: contain;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5));
+    }
+
+    .hp-bar {
+      height: 8px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+
+    .hp-bar-fill {
+      height: 100%;
+      width: 80%;
+      background: #4ade80;
+      border-radius: 4px;
+      transition: width 0.3s;
+    }
+
+    .attacks {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .attack-btn {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: white;
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: all 0.2s;
+    }
+
+    .attack-btn:hover {
+      background: rgba(255,255,255,0.15);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .attack-btn .atk-name { font-weight: 600; }
+    .attack-btn .atk-cost { color: var(--electric); }
+    .attack-btn .atk-dmg { color: var(--fire); font-weight: 700; }
+
+    /* Bench row */
+    .bench-row {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .bench-card {
+      width: 60px;
+      height: 80px;
+      background: var(--bg-card);
+      border: 2px solid var(--grass);
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .bench-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 6px 16px rgba(34,197,94,0.3);
+    }
+
+    .bench-card img {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+    }
+
+    .bench-card .bench-name {
+      font-size: 0.55rem;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .bench-card .bench-hp {
+      font-size: 0.5rem;
+      color: var(--text-secondary);
+    }
+
+    /* --- Hand Section --- */
+    .hand-section {
+      background: rgba(0,0,0,0.6);
+      border-radius: 16px 16px 0 0;
+      padding: 10px 16px;
+      border: 1px solid var(--border);
+      border-bottom: none;
+    }
+
+    .hand-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .hand-label {
+      font-size: 0.75rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--accent);
+    }
+
+    .hand-count {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    .hand-cards {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+    }
+
+    .hand-card {
+      min-width: 90px;
+      height: 110px;
+      background: var(--bg-card);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 8px;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .hand-card:hover {
+      transform: translateY(-20px) scale(1.05);
+      border-color: var(--accent);
+      box-shadow: 0 12px 24px rgba(102,126,234,0.3);
+      z-index: 10;
+    }
+
+    .hand-card.pokemon { border-color: var(--water); }
+    .hand-card.energy { border-color: var(--electric); }
+    .hand-card.trainer { border-color: #a855f7; }
+
+    .hand-card .hc-icon { font-size: 1.5rem; }
+    .hand-card .hc-name { font-size: 0.65rem; font-weight: 600; text-align: center; }
+    .hand-card .hc-type { font-size: 0.55rem; color: var(--text-secondary); }
+
+    /* Turn indicator */
+    .turn-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .turn-badge {
+      background: linear-gradient(135deg, #4ade80, #22c55e);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .turn-number {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    .score-display {
+      font-size: 1rem;
+      font-weight: 800;
+      color: #4ade80;
+    }
+
+    .end-turn-btn {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border: none;
+      color: white;
+      padding: 8px 20px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .end-turn-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 16px rgba(102,126,234,0.4);
+    }
+  </style>
+</head>
+<body>
+  <div class="game-board">
+    <!-- Opponent Info Bar -->
+    <div class="opponent-bar">
+      <div class="player-identity">
+        <div class="avatar">🔥</div>
+        <div>
+          <div class="player-name">Red (Bot)</div>
+          <div class="player-element">Fire Element</div>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat">
+          <div class="stat-value">5</div>
+          <div class="stat-label">Hand</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value">18</div>
+          <div class="stat-label">Deck</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value">2</div>
+          <div class="stat-label">Bench</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value">1/3</div>
+          <div class="stat-label">Score</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Opponent Half -->
+    <div class="opponent-half">
+      <div class="card-back-row">
+        <div class="card-back-small"></div>
+        <div class="card-back-small"></div>
+        <div class="card-back-small"></div>
+        <div class="card-back-small"></div>
+        <div class="card-back-small"></div>
+      </div>
+      <div class="opponent-active-slot">
+        <div class="opponent-pokemon">
+          <img class="poke-img" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/6.png" alt="Charizard" />
+          <div class="poke-name">Charizard</div>
+          <div class="poke-hp-bar"><div class="poke-hp-fill"></div></div>
+        </div>
+      </div>
+      <div class="opponent-bench">
+        <div class="bench-mini">🔥</div>
+        <div class="bench-mini">🔥</div>
+      </div>
+    </div>
+
+    <!-- Battlefield Strip -->
+    <div class="battlefield">
+      <div class="vs-badge">VS</div>
+    </div>
+
+    <!-- Player Half -->
+    <div class="player-half">
+      <!-- Left zones -->
+      <div class="side-zone">
+        <div class="zone-box">
+          <div class="zone-icon">🃏</div>
+          <div class="zone-count">22</div>
+          <div class="zone-label">Deck</div>
+        </div>
+        <div class="zone-box">
+          <div class="zone-icon">⚡</div>
+          <div class="zone-count">4</div>
+          <div class="zone-label">Energy</div>
+        </div>
+      </div>
+
+      <!-- Center: Active + Bench -->
+      <div class="player-active-area">
+        <div class="active-card">
+          <div class="card-header">
+            <span class="card-name">Blastoise</span>
+            <span class="card-hp">95/120 HP</span>
+          </div>
+          <div class="card-image">
+            <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/9.png" alt="Blastoise" />
+          </div>
+          <div class="hp-bar"><div class="hp-bar-fill" style="width:79%"></div></div>
+          <div class="attacks">
+            <button class="attack-btn">
+              <span class="atk-name">Hydro Pump</span>
+              <span class="atk-cost">3⚡</span>
+              <span class="atk-dmg">60 DMG</span>
+            </button>
+            <button class="attack-btn">
+              <span class="atk-name">Water Gun</span>
+              <span class="atk-cost">1⚡</span>
+              <span class="atk-dmg">30 DMG</span>
+            </button>
+          </div>
+        </div>
+        <div class="bench-row">
+          <div class="bench-card">
+            <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/8.png" alt="Wartortle" />
+            <div class="bench-name">Wartortle</div>
+            <div class="bench-hp">60/60</div>
+          </div>
+          <div class="bench-card">
+            <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/131.png" alt="Lapras" />
+            <div class="bench-name">Lapras</div>
+            <div class="bench-hp">80/80</div>
+          </div>
+          <div class="bench-card" style="border-color: var(--border); opacity: 0.4;">
+            <span style="font-size:1.2rem; color: var(--text-secondary);">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right zones -->
+      <div class="side-zone">
+        <div class="zone-box">
+          <div class="zone-icon">🎁</div>
+          <div class="zone-count">2/3</div>
+          <div class="zone-label">Prizes</div>
+        </div>
+        <div class="zone-box">
+          <div class="zone-icon">🗑️</div>
+          <div class="zone-count">3</div>
+          <div class="zone-label">Discard</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hand -->
+    <div class="hand-section">
+      <div class="hand-header">
+        <div style="display:flex; align-items:center; gap:16px;">
+          <span class="hand-label">Your Hand</span>
+          <span class="hand-count">6 cards</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:16px;">
+          <div class="turn-indicator">
+            <span class="turn-badge">Your Turn</span>
+            <span class="turn-number">Turn 5</span>
+          </div>
+          <span class="score-display">Score: 2/3</span>
+          <button class="end-turn-btn">End Turn →</button>
+        </div>
+      </div>
+      <div class="hand-cards">
+        <div class="hand-card pokemon">
+          <span class="hc-icon">💧</span>
+          <span class="hc-name">Squirtle</span>
+          <span class="hc-type">Basic • 50HP</span>
+        </div>
+        <div class="hand-card energy">
+          <span class="hc-icon">💧</span>
+          <span class="hc-name">Water Energy</span>
+          <span class="hc-type">Energy</span>
+        </div>
+        <div class="hand-card pokemon">
+          <span class="hc-icon">💧</span>
+          <span class="hc-name">Vaporeon</span>
+          <span class="hc-type">Stage 1 • 90HP</span>
+        </div>
+        <div class="hand-card trainer">
+          <span class="hc-icon">📜</span>
+          <span class="hc-name">Potion</span>
+          <span class="hc-type">Trainer</span>
+        </div>
+        <div class="hand-card energy">
+          <span class="hc-icon">💧</span>
+          <span class="hc-name">Water Energy</span>
+          <span class="hc-type">Energy</span>
+        </div>
+        <div class="hand-card pokemon">
+          <span class="hc-icon">💧</span>
+          <span class="hc-name">Gyarados</span>
+          <span class="hc-type">Stage 1 • 100HP</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

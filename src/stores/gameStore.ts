@@ -86,12 +86,31 @@ export const useGameStore = defineStore('game', () => {
   const player1CustomPokemon = ref<Card[]>([])
   const player2CustomPokemon = ref<Card[]>([])
 
+  // Bot difficulty
+  type BotDifficulty = 'easy' | 'medium' | 'hard'
+  const botDifficulty = ref<BotDifficulty>('medium')
+
+  function setBotDifficulty(level: BotDifficulty) {
+    botDifficulty.value = level
+  }
+
   // Actions
   function triggerVfx(type: ElementType | 'neutral', target: 'player1' | 'player2') {
     activeVfx.value = { type, target, timestamp: Date.now() }
     setTimeout(() => {
       activeVfx.value = null
     }, 1000)
+  }
+
+  // Floating damage numbers
+  const damageNumbers = ref<Array<{ id: string; target: 'player1' | 'player2'; value: number; type: 'damage' | 'heal'; timestamp: number }>>([])
+
+  function pushDamageNumber(target: 'player1' | 'player2', value: number, type: 'damage' | 'heal' = 'damage') {
+    const id = Math.random().toString(36).slice(2, 9)
+    damageNumbers.value.push({ id, target, value, type, timestamp: Date.now() })
+    setTimeout(() => {
+      damageNumbers.value = damageNumbers.value.filter(d => d.id !== id)
+    }, 1400)
   }
 
   function addLog(message: string) {
@@ -137,7 +156,6 @@ export const useGameStore = defineStore('game', () => {
         const card = player.deck.pop()
         if (card) {
           player.hand.push(card)
-          soundManager.play('draw')
         }
       }
     }
@@ -275,9 +293,11 @@ export const useGameStore = defineStore('game', () => {
     drawCard(player1.value, 5)
     drawCard(player2.value, 5)
 
+    // Auto-mulligan for the bot if no basic in hand
     if (gameMode.value === 'single') {
       player2.value.isBot = true
       player2.value.name = 'Bot'
+      autoMulligan(player2.value)
     }
 
     gamePhase.value = 'playing'
@@ -285,7 +305,50 @@ export const useGameStore = defineStore('game', () => {
     currentTurn.value = 1
     logs.value = []
     addLog("Game started!")
-    soundManager.play('start')
+    soundService.play('start')
+  }
+
+  // Player can redraw if their hand has no basic Pokémon (and no useful active to evolve from)
+  function canMulligan(player: Player): boolean {
+    const hasBasic = player.hand.some(c => c.type === 'pokemon' && (c.stage === 'basic' || !c.stage))
+    return !hasBasic
+  }
+
+  function performMulligan(playerNum: 1 | 2) {
+    const player = playerNum === 1 ? player1.value : player2.value
+    if (!canMulligan(player)) return false
+
+    // Reshuffle hand back into deck
+    player.deck.push(...player.hand)
+    player.hand = []
+    // Shuffle
+    for (let i = player.deck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      const tmp = player.deck[i]!
+      player.deck[i] = player.deck[j]!
+      player.deck[j] = tmp
+    }
+    // Redraw 5
+    drawCard(player, 5)
+    addLog(`${player.name} mulliganed (no basic Pokémon).`)
+    soundService.play('draw')
+    return true
+  }
+
+  function autoMulligan(player: Player, maxAttempts = 3) {
+    let attempts = 0
+    while (canMulligan(player) && attempts < maxAttempts) {
+      player.deck.push(...player.hand)
+      player.hand = []
+      for (let i = player.deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        const tmp = player.deck[i]!
+        player.deck[i] = player.deck[j]!
+        player.deck[j] = tmp
+      }
+      drawCard(player, 5)
+      attempts++
+    }
   }
 
   // --- Game Logic Actions ---
@@ -330,13 +393,15 @@ export const useGameStore = defineStore('game', () => {
         return
       }
 
-      alert("Bench is full! (max 3 Pokémon)")
+      // Bench is full — silently reject (UI/bot can check first)
+      addLog(`${player.name}'s bench is full.`)
+      return
     }
 
     // 2. Handle Energy
     if (card.type === 'energy') {
       if (player.energyAttachedThisTurn) {
-        alert("You can only play one Energy card per turn!")
+        addLog(`${player.name} already attached an energy this turn.`)
         return
       }
 
@@ -351,14 +416,48 @@ export const useGameStore = defineStore('game', () => {
     if (card.type === 'item' || card.type === 'supporter') {
       if (card.name === 'Potion') {
         if (!player.active) {
-          alert("No active Pokémon to heal!")
+          addLog("No active Pokémon to heal!")
+          soundService.play('error')
           return
         }
-        player.active.currentHp = Math.min(player.active.hp || 0, (player.active.currentHp || 0) + 30)
-        console.log(`Healed ${player.active.name} for 30 HP`)
+        const before = player.active.currentHp || 0
+        player.active.currentHp = Math.min(player.active.hp || 0, before + 30)
+        const healed = (player.active.currentHp || 0) - before
+        addLog(`${player.name} used Potion. Healed ${healed} HP.`)
+        const target = player.id === 1 ? 'player1' : 'player2'
+        pushDamageNumber(target, healed, 'heal')
+        soundService.play('heal')
+      } else if (card.name === 'Super Potion') {
+        if (!player.active) {
+          addLog("No active Pokémon to heal!")
+          soundService.play('error')
+          return
+        }
+        const before = player.active.currentHp || 0
+        player.active.currentHp = Math.min(player.active.hp || 0, before + 60)
+        const healed = (player.active.currentHp || 0) - before
+        addLog(`${player.name} used Super Potion. Healed ${healed} HP.`)
+        const target = player.id === 1 ? 'player1' : 'player2'
+        pushDamageNumber(target, healed, 'heal')
+        soundService.play('heal')
+      } else if (card.name === 'Full Heal') {
+        if (!player.active) {
+          addLog("No active Pokémon!")
+          soundService.play('error')
+          return
+        }
+        const removed = player.active.statusEffects?.length || 0
+        player.active.statusEffects = []
+        if (removed > 0) {
+          addLog(`${player.name} used Full Heal. Removed ${removed} status effect(s).`)
+        } else {
+          addLog(`${player.name} used Full Heal. No status to remove.`)
+        }
+        soundService.play('heal')
       } else if (card.name === 'Switch') {
         if (player.bank.length === 0) {
-          alert("No Pokémon on bench to switch with!")
+          addLog("No Pokémon on bench to switch with!")
+          soundService.play('error')
           return
         }
         if (!player.active) {
@@ -371,17 +470,80 @@ export const useGameStore = defineStore('game', () => {
             player.bank[0] = oldActive
           }
         }
-        console.log("Switched active Pokémon!")
+        addLog(`${player.name} switched their active Pokémon.`)
+      } else if (card.name === 'Gust of Wind') {
+        // Force opponent to swap active with first bench
+        const oppPlayer = opponent.value
+        if (!oppPlayer.bank || oppPlayer.bank.length === 0) {
+          addLog("Opponent has no benched Pokémon to switch.")
+          soundService.play('error')
+          return
+        }
+        if (oppPlayer.active && oppPlayer.bank[0]) {
+          const oldActive = oppPlayer.active
+          oppPlayer.active = oppPlayer.bank[0]
+          oppPlayer.bank[0] = oldActive
+          addLog(`${player.name} used Gust of Wind! ${oppPlayer.name}'s active was switched.`)
+        }
       } else if (card.name === 'Professor\'s Research') {
-        // Discard hand (except this card which is being played)
+        // Discard rest of hand, draw 5
         const handToDiscard = player.hand.filter(c => c.uniqueId !== card.uniqueId)
         player.discardPile.push(...handToDiscard)
-        player.hand = [card] // Only this card left in hand temporarily
-        drawCard(player, 3)
-        console.log("Professor's Research: Discarded hand and drew 3 cards")
+        player.hand = [card]
+        drawCard(player, 5)
+        addLog(`${player.name} played Professor's Research. Drew 5 cards.`)
       } else if (card.name === 'Bill') {
         drawCard(player, 2)
         addLog(`${player.name} played Bill and drew 2 cards.`)
+      } else if (card.name === 'Pokéball') {
+        // Search deck for first basic Pokémon
+        const idx = player.deck.findIndex(c => c.type === 'pokemon' && (c.stage === 'basic' || !c.stage))
+        if (idx === -1) {
+          addLog("No basic Pokémon in deck.")
+          soundService.play('error')
+        } else {
+          const found = player.deck.splice(idx, 1)[0]
+          if (found) {
+            player.hand.push(found)
+            addLog(`${player.name} found ${found.name} with Pokéball.`)
+            // Reshuffle remaining deck for fairness
+            for (let i = player.deck.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1))
+              const tmp = player.deck[i]!
+              player.deck[i] = player.deck[j]!
+              player.deck[j] = tmp
+            }
+          }
+        }
+      } else if (card.name === 'Energy Search') {
+        const idx = player.deck.findIndex(c => c.type === 'energy')
+        if (idx === -1) {
+          addLog("No energy cards in deck.")
+          soundService.play('error')
+        } else {
+          const found = player.deck.splice(idx, 1)[0]
+          if (found) {
+            player.hand.push(found)
+            addLog(`${player.name} found ${found.name}.`)
+            for (let i = player.deck.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1))
+              const tmp = player.deck[i]!
+              player.deck[i] = player.deck[j]!
+              player.deck[j] = tmp
+            }
+          }
+        }
+      } else if (card.name === 'Energy Boost') {
+        const elementToAdd = (player.element || 'fire') as ElementType
+        player.energyZone.push({
+          id: `boost-energy-${Date.now()}`,
+          uniqueId: Math.random().toString(36).substr(2, 9),
+          name: `${elementToAdd} Energy`,
+          element: elementToAdd,
+          type: 'energy'
+        })
+        addLog(`${player.name} used Energy Boost. +1 ${elementToAdd} energy.`)
+        soundService.play('energy')
       }
 
       // Discard the trainer card after use (find it again since hand might have changed)
@@ -410,19 +572,22 @@ export const useGameStore = defineStore('game', () => {
 
     // 0. Check Status Effects
     if (activePokemon.statusEffects?.includes('paralyzed')) {
-      alert(`${activePokemon.name} is paralyzed and cannot attack!`)
+      addLog(`${activePokemon.name} is paralyzed and cannot attack!`)
+      soundService.play('error')
       endTurn()
       return
     }
     if (activePokemon.statusEffects?.includes('asleep')) {
-      alert(`${activePokemon.name} is asleep and cannot attack!`)
+      addLog(`${activePokemon.name} is asleep and cannot attack!`)
+      soundService.play('error')
       endTurn()
       return
     }
 
     // Check Energy Cost (Using Energy Zone Pool)
     if (player.energyZone.length < selectedAttack.energyCost) {
-      alert(`Not enough energy! Need ${selectedAttack.energyCost}, have ${player.energyZone.length}`)
+      addLog(`Not enough energy! Need ${selectedAttack.energyCost}, have ${player.energyZone.length}`)
+      soundService.play('error')
       return
     }
 
@@ -443,8 +608,14 @@ export const useGameStore = defineStore('game', () => {
       addLog(`${activePokemon.name} used ${selectedAttack.name} for ${finalDamage} damage!`)
 
       // Trigger VFX
-      triggerVfx((activePokemon.element as ElementType) || 'neutral', opp.id === 1 ? 'player1' : 'player2')
+      const targetSide = opp.id === 1 ? 'player1' : 'player2'
+      triggerVfx((activePokemon.element as ElementType) || 'neutral', targetSide)
       soundService.playAttack((activePokemon.element as string) || 'normal')
+
+      // Floating damage number on the hit Pokémon
+      pushDamageNumber(targetSide, finalDamage, 'damage')
+      // Small thud after the element sound
+      setTimeout(() => soundService.play('damage'), 80)
 
       // Apply Secondary Effects
       if (selectedAttack.effect && Math.random() < (selectedAttack.effectChance || 1)) {
@@ -476,7 +647,7 @@ export const useGameStore = defineStore('game', () => {
       victim.active.currentHp = 0
       victim.discardPile.push(victim.active)
       victim.active = null
-      soundManager.play('ko')
+      soundService.play('ko')
     }
 
     // 2. Attacker gains 1 point and draws a Prize Card
@@ -489,6 +660,7 @@ export const useGameStore = defineStore('game', () => {
       if (prizeCard) {
         attacker.hand.push(prizeCard)
         addLog(`${attacker.name} drew a Prize Card!`)
+        soundService.play('prize')
       }
     }
 
@@ -498,7 +670,9 @@ export const useGameStore = defineStore('game', () => {
     if (attacker.score >= 3) {
       gamePhase.value = 'ended'
       winner.value = attacker.name
-      soundService.play('victory')
+      // Play victory if the user won, otherwise defeat
+      const userIsAttacker = (gameMode.value === 'online' ? attacker.id === myPlayer.value.id : attacker.id === 1)
+      soundService.play(userIsAttacker ? 'victory' : 'defeat')
       return
     }
 
@@ -518,7 +692,8 @@ export const useGameStore = defineStore('game', () => {
         // No bench, no active, no Pokemon in hand = total loss
         gamePhase.value = 'ended'
         winner.value = attacker.name
-        soundService.play('victory')
+        const userIsAttacker = (gameMode.value === 'online' ? attacker.id === myPlayer.value.id : attacker.id === 1)
+        soundService.play(userIsAttacker ? 'victory' : 'defeat')
         console.log(`${attacker.name} wins! ${victim.name} has no Pokemon left!`)
       } else {
         // Victim will need to play a Pokemon from hand on their next turn
@@ -530,7 +705,8 @@ export const useGameStore = defineStore('game', () => {
   function promoteBenchPokemon(card: Card) {
     const player = currentPlayer.value
     if (player.active) {
-      alert("You already have an active Pokémon!")
+      addLog("You already have an active Pokémon!")
+      soundService.play('error')
       return
     }
 
@@ -551,7 +727,8 @@ export const useGameStore = defineStore('game', () => {
 
     // Check if target matches evolvesFrom
     if (targetCard.name !== evolver.evolvesFrom) {
-      alert(`This card evolves from ${evolver.evolvesFrom}, not ${targetCard.name}!`)
+      addLog(`${evolver.name} evolves from ${evolver.evolvesFrom}, not ${targetCard.name}.`)
+      soundService.play('error')
       return
     }
 
@@ -571,7 +748,8 @@ export const useGameStore = defineStore('game', () => {
     }
 
     if (!onBoard) {
-      alert("Target Pokémon not found on board!")
+      addLog("Target Pokémon not found on board.")
+      soundService.play('error')
       return
     }
 
@@ -607,6 +785,101 @@ export const useGameStore = defineStore('game', () => {
     pendingEvolution.value = null
   }
 
+  // ===== Persistence =====
+  const STORAGE_KEY = 'pokecg_save_v1'
+  const SETTINGS_KEY = 'pokecg_settings_v1'
+
+  function saveGame() {
+    if (typeof localStorage === 'undefined') return
+    // Only persist single-player or local games (online games have their own sync)
+    if (gameMode.value === 'online') return
+    if (gamePhase.value !== 'playing') return
+    try {
+      const snapshot = {
+        version: 1,
+        timestamp: Date.now(),
+        currentTurn: currentTurn.value,
+        gamePhase: gamePhase.value,
+        turnNumber: turnNumber.value,
+        winner: winner.value,
+        gameMode: gameMode.value,
+        botDifficulty: botDifficulty.value,
+        player1: JSON.parse(JSON.stringify(player1.value)),
+        player2: JSON.parse(JSON.stringify(player2.value)),
+        logs: logs.value.slice(0, 30),
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot))
+    } catch (e) {
+      console.warn('Failed to save game:', e)
+    }
+  }
+
+  function hasSavedGame(): boolean {
+    if (typeof localStorage === 'undefined') return false
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (!raw) return false
+      const data = JSON.parse(raw)
+      return data && data.gamePhase === 'playing' && Date.now() - (data.timestamp || 0) < 24 * 60 * 60 * 1000
+    } catch {
+      return false
+    }
+  }
+
+  function loadGame(): boolean {
+    if (typeof localStorage === 'undefined') return false
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (!raw) return false
+      const data = JSON.parse(raw)
+      if (!data || data.version !== 1) return false
+      if (data.gamePhase !== 'playing') return false
+
+      currentTurn.value = data.currentTurn
+      gamePhase.value = data.gamePhase
+      turnNumber.value = data.turnNumber
+      winner.value = data.winner
+      gameMode.value = data.gameMode
+      botDifficulty.value = data.botDifficulty || 'medium'
+      player1.value = data.player1
+      player2.value = data.player2
+      logs.value = data.logs || []
+      addLog('Game resumed from save.')
+      return true
+    } catch (e) {
+      console.warn('Failed to load game:', e)
+      return false
+    }
+  }
+
+  function clearSavedGame() {
+    if (typeof localStorage === 'undefined') return
+    try { localStorage.removeItem(STORAGE_KEY) } catch {}
+  }
+
+  // Settings persistence (mute, volume, locale, last difficulty)
+  function saveSettings(partial: { muted?: boolean; volume?: number; locale?: string; difficulty?: BotDifficulty }) {
+    if (typeof localStorage === 'undefined') return
+    try {
+      const existing = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}')
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...existing, ...partial }))
+    } catch {}
+  }
+
+  function loadSettings(): { muted?: boolean; volume?: number; locale?: string; difficulty?: BotDifficulty } {
+    if (typeof localStorage === 'undefined') return {}
+    try {
+      return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}')
+    } catch {
+      return {}
+    }
+  }
+
+  // Auto-save on key actions (debounced via watcher in component)
+  // Load saved difficulty preference on init
+  const savedSettings = loadSettings()
+  if (savedSettings.difficulty) botDifficulty.value = savedSettings.difficulty
+
   return {
     currentTurn,
     gamePhase,
@@ -617,6 +890,8 @@ export const useGameStore = defineStore('game', () => {
     playerRole,
     logs,
     activeVfx,
+    damageNumbers,
+    pushDamageNumber,
     hoveredCard,
     hoveredCardPosition,
     selectedCard,
@@ -630,6 +905,16 @@ export const useGameStore = defineStore('game', () => {
     setGameMode,
     setPlayerElement,
     setCustomDeck,
+    canMulligan,
+    performMulligan,
+    botDifficulty,
+    setBotDifficulty,
+    saveGame,
+    loadGame,
+    hasSavedGame,
+    clearSavedGame,
+    saveSettings,
+    loadSettings,
     endTurn,
     startGame,
     drawCard,

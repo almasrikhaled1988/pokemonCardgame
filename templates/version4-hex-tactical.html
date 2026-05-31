@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pokémon Card Game – Hex Tactical (V4)</title>
+  <style>
+    :root {
+      --fire: #ef4444;
+      --water: #3b82f6;
+      --grass: #22c55e;
+      --electric: #eab308;
+      --bg-dark: #0d1117;
+      --bg-panel: #161b22;
+      --bg-card: #1c2128;
+      --border: rgba(139,148,158,0.2);
+      --text: #c9d1d9;
+      --text-dim: #8b949e;
+      --accent: #ffa657;
+      --gold: #f0c674;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ===== LAYOUT: Hex Tactical Grid =====
+       Inspired by tactics/strategy games. Hexagonal slots for Pokémon.
+       Earthy palette, parchment vibes. Top: opponent hex grid. Center: turn timer.
+       Bottom: player hex grid. Right rail: stats & log.
+    */
+
+    .battle-arena {
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      height: 100vh;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(255,166,87,0.04) 0%, transparent 70%),
+        var(--bg-dark);
+    }
+
+    /* Honeycomb pattern overlay */
+    .battle-arena::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='52' viewBox='0 0 60 52'><path d='M30 1L58 17v18L30 51 2 35V17z' fill='none' stroke='%23ffa657' stroke-opacity='0.04' stroke-width='1'/></svg>");
+      background-size: 60px 52px;
+      pointer-events: none;
+    }
+
+    /* --- Main Battlefield --- */
+    .field {
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      gap: 12px;
+      min-height: 0;
+      position: relative;
+    }
+
+    /* Header strip */
+    .field-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 16px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .commander {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .commander.opp { color: var(--fire); }
+    .commander.you { color: var(--water); }
+
+    .commander-icon {
+      width: 38px;
+      height: 38px;
+      background: var(--bg-card);
+      border: 2px solid currentColor;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+    }
+
+    .commander-name { font-weight: 700; font-size: 0.85rem; }
+    .commander-stats { font-size: 0.7rem; color: var(--text-dim); }
+
+    .turn-banner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .turn-banner .tb-num {
+      font-size: 0.65rem;
+      letter-spacing: 2px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+
+    .turn-banner .tb-status {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Hex Grid Area */
+    .hex-field {
+      flex: 1;
+      display: grid;
+      grid-template-rows: 1fr auto 1fr;
+      gap: 16px;
+      min-height: 0;
+    }
+
+    .hex-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+    }
+
+    .hex-row.opp { transform: scaleY(0.92); }
+
+    /* Hex slot - using clip-path */
+    .hex-slot {
+      width: 130px;
+      height: 150px;
+      background: var(--bg-panel);
+      border: none;
+      clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      cursor: pointer;
+      position: relative;
+      margin: 0 -8px;
+      transition: all 0.25s;
+    }
+
+    /* Outline using pseudo-element */
+    .hex-slot::before {
+      content: "";
+      position: absolute;
+      inset: 2px;
+      background: var(--bg-card);
+      clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+      z-index: 0;
+    }
+
+    .hex-slot.fire { background: var(--fire); }
+    .hex-slot.water { background: var(--water); }
+    .hex-slot.grass { background: var(--grass); }
+    .hex-slot.electric { background: var(--electric); }
+    .hex-slot.empty { background: rgba(139,148,158,0.15); }
+    .hex-slot.empty::before { background: rgba(28,33,40,0.5); }
+
+    .hex-slot:hover { transform: scale(1.05); }
+
+    .hex-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      padding: 4px;
+    }
+
+    .hex-slot.active-hex {
+      width: 180px;
+      height: 200px;
+    }
+
+    .hex-content img {
+      width: 70px;
+      height: 70px;
+      object-fit: contain;
+      filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));
+    }
+
+    .hex-slot.active-hex .hex-content img {
+      width: 100px;
+      height: 100px;
+    }
+
+    .hex-slot.opp-hex .hex-content img { transform: scaleX(-1); }
+
+    .hex-name {
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: white;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    }
+
+    .hex-slot.active-hex .hex-name { font-size: 0.85rem; }
+
+    .hex-hp {
+      font-size: 0.55rem;
+      color: var(--gold);
+      font-weight: 600;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    }
+
+    .hex-hp-bar {
+      width: 60px;
+      height: 4px;
+      background: rgba(0,0,0,0.5);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .hex-hp-fill {
+      height: 100%;
+      background: #4ade80;
+    }
+
+    .hex-empty-text {
+      color: var(--text-dim);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Center Strip - Battle info */
+    .battle-strip {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 8px;
+      background: linear-gradient(90deg, transparent, rgba(255,166,87,0.08), transparent);
+      border-top: 1px solid rgba(255,166,87,0.15);
+      border-bottom: 1px solid rgba(255,166,87,0.15);
+    }
+
+    .battle-emblem {
+      width: 60px;
+      height: 60px;
+      background: var(--bg-panel);
+      border: 2px solid var(--accent);
+      clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      font-weight: 900;
+      color: var(--accent);
+    }
+
+    /* Attack Panel - separate from active hex */
+    .attack-panel {
+      position: absolute;
+      right: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      min-width: 200px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+
+    .attack-panel h4 {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+
+    .tactical-attack {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      margin-bottom: 6px;
+      transition: all 0.2s;
+      font-size: 0.75rem;
+    }
+
+    .tactical-attack:hover {
+      border-color: var(--accent);
+      background: rgba(255,166,87,0.05);
+    }
+
+    .ta-name { font-weight: 700; color: var(--text); }
+    .ta-cost { color: var(--electric); font-size: 0.65rem; }
+    .ta-dmg { color: var(--fire); font-weight: 700; }
+
+    /* Hand strip below */
+    .hand-strip {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+    }
+
+    .hand-strip-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .hs-title {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--accent);
+      font-weight: 800;
+    }
+
+    .hs-count {
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      font-family: monospace;
+    }
+
+    .hand-strip-cards {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+    }
+
+    .hex-card {
+      min-width: 80px;
+      height: 96px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .hex-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-6px);
+      box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+    }
+
+    .hex-card .hxc-element-tag {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.6rem;
+    }
+
+    .hex-card .hxc-element-tag.water { background: var(--water); }
+    .hex-card .hxc-element-tag.electric { background: var(--electric); }
+    .hex-card .hxc-element-tag.trainer { background: #a855f7; }
+
+    .hex-card .hxc-name {
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-top: auto;
+    }
+
+    .hex-card .hxc-stats {
+      font-size: 0.55rem;
+      color: var(--text-dim);
+      font-family: monospace;
+    }
+
+    /* --- Right Rail --- */
+    .right-rail {
+      background: var(--bg-panel);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      gap: 12px;
+      overflow-y: auto;
+    }
+
+    .rail-header {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--accent);
+      font-weight: 800;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .stat-tile {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
+      text-align: center;
+    }
+
+    .stat-tile .st-icon { font-size: 1rem; }
+    .stat-tile .st-val {
+      font-size: 1.1rem;
+      font-weight: 800;
+      font-family: monospace;
+      color: var(--accent);
+      margin-top: 2px;
+    }
+
+    .stat-tile .st-lbl {
+      font-size: 0.55rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+
+    .vs-scoreboard {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+    }
+
+    .vs-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      padding: 4px 0;
+    }
+
+    .vs-row .vs-name { color: var(--text); }
+    .vs-row .vs-score { font-family: monospace; font-weight: 800; color: var(--gold); }
+
+    .log-feed {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
+      flex: 1;
+      overflow-y: auto;
+      min-height: 0;
+    }
+
+    .log-line {
+      font-size: 0.7rem;
+      color: var(--text);
+      padding: 4px 0;
+      border-bottom: 1px solid rgba(139,148,158,0.08);
+      font-family: monospace;
+    }
+
+    .log-line:last-child { border: none; }
+    .log-line .lt { color: var(--accent); margin-right: 6px; }
+
+    .end-turn-tactical {
+      background: var(--accent);
+      color: var(--bg-dark);
+      border: none;
+      padding: 12px;
+      border-radius: 6px;
+      font-weight: 800;
+      font-size: 0.8rem;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      transition: all 0.2s;
+    }
+
+    .end-turn-tactical:hover {
+      background: var(--gold);
+      box-shadow: 0 4px 16px rgba(255,166,87,0.3);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="battle-arena">
+    <!-- Main Battlefield -->
+    <div class="field">
+      <div class="field-header">
+        <div class="commander opp">
+          <div class="commander-icon">🔥</div>
+          <div>
+            <div class="commander-name">Red (Bot)</div>
+            <div class="commander-stats">Fire • Hand 4 • Deck 16</div>
+          </div>
+        </div>
+        <div class="turn-banner">
+          <span class="tb-num">Turn 5</span>
+          <span class="tb-status">⚔ Your Move</span>
+        </div>
+        <div class="commander you">
+          <div>
+            <div class="commander-name" style="text-align:right">Blue (You)</div>
+            <div class="commander-stats" style="text-align:right">Water • Deck 22</div>
+          </div>
+          <div class="commander-icon">💧</div>
+        </div>
+      </div>
+
+      <div class="hex-field">
+        <!-- Opponent Hex Row -->
+        <div class="hex-row opp">
+          <div class="hex-slot fire opp-hex">
+            <div class="hex-content">
+              <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/59.png" alt="Arcanine" />
+              <span class="hex-name">Arcanine</span>
+              <span class="hex-hp">90/90</span>
+              <div class="hex-hp-bar"><div class="hex-hp-fill" style="width:100%"></div></div>
+            </div>
+          </div>
+          <div class="hex-slot fire opp-hex active-hex">
+            <div class="hex-content">
+              <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/6.png" alt="Charizard" />
+              <span class="hex-name">Charizard ⚔</span>
+              <span class="hex-hp">78/120</span>
+              <div class="hex-hp-bar"><div class="hex-hp-fill" style="width:65%;background:#fbbf24"></div></div>
+            </div>
+          </div>
+          <div class="hex-slot fire opp-hex">
+            <div class="hex-content">
+              <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/136.png" alt="Flareon" />
+              <span class="hex-name">Flareon</span>
+              <span class="hex-hp">70/70</span>
+              <div class="hex-hp-bar"><div class="hex-hp-fill" style="width:100%"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Battle Strip -->
+        <div class="battle-strip">
+          <div class="battle-emblem">⚔</div>
+          <span style="font-size:0.7rem; color:var(--text-dim); letter-spacing:2px; text-transform:uppercase;">Battlefield</span>
+          <div class="battle-emblem">🛡</div>
+        </div>
+
+        <!-- Player Hex Row -->
+        <div class="hex-row" style="position:relative;">
+          <div class="hex-slot water">
+            <div class="hex-content">
+              <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/8.png" alt="Wartortle" />
+              <span class="hex-name">Wartortle</span>
+              <span class="hex-hp">60/60</span>
+              <div class="hex-hp-bar"><div class="hex-hp-fill" style="width:100%"></div></div>
+            </div>
+          </div>
+          <div class="hex-slot water active-hex">
+            <div class="hex-content">
+              <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/9.png" alt="Blastoise" />
+              <span class="hex-name">Blastoise ⚔</span>
+              <span class="hex-hp">95/120</span>
+              <div class="hex-hp-bar"><div class="hex-hp-fill" style="width:79%"></div></div>
+            </div>
+          </div>
+          <div class="hex-slot water">
+            <div class="hex-content">
+              <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/131.png" alt="Lapras" />
+              <span class="hex-name">Lapras</span>
+              <span class="hex-hp">80/80</span>
+              <div class="hex-hp-bar"><div class="hex-hp-fill" style="width:100%"></div></div>
+            </div>
+          </div>
+
+          <!-- Floating Attack Panel -->
+          <div class="attack-panel">
+            <h4>⚔ Blastoise Attacks</h4>
+            <div class="tactical-attack">
+              <span class="ta-name">Hydro Pump</span>
+              <span class="ta-cost">3⚡</span>
+              <span class="ta-dmg">60</span>
+            </div>
+            <div class="tactical-attack">
+              <span class="ta-name">Water Gun</span>
+              <span class="ta-cost">1⚡</span>
+              <span class="ta-dmg">30</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hand Strip -->
+      <div class="hand-strip">
+        <div class="hand-strip-header">
+          <span class="hs-title">⚒ Your Inventory</span>
+          <span class="hs-count">[ 6 / 60 ]</span>
+        </div>
+        <div class="hand-strip-cards">
+          <div class="hex-card">
+            <span class="hxc-element-tag water">💧</span>
+            <span class="hxc-name">Squirtle</span>
+            <span class="hxc-stats">HP 50</span>
+          </div>
+          <div class="hex-card">
+            <span class="hxc-element-tag electric">⚡</span>
+            <span class="hxc-name">Water Energy</span>
+            <span class="hxc-stats">+1⚡</span>
+          </div>
+          <div class="hex-card">
+            <span class="hxc-element-tag water">💧</span>
+            <span class="hxc-name">Vaporeon</span>
+            <span class="hxc-stats">HP 90 • S1</span>
+          </div>
+          <div class="hex-card">
+            <span class="hxc-element-tag trainer">📜</span>
+            <span class="hxc-name">Potion</span>
+            <span class="hxc-stats">Heal 30</span>
+          </div>
+          <div class="hex-card">
+            <span class="hxc-element-tag electric">⚡</span>
+            <span class="hxc-name">Water Energy</span>
+            <span class="hxc-stats">+1⚡</span>
+          </div>
+          <div class="hex-card">
+            <span class="hxc-element-tag water">💧</span>
+            <span class="hxc-name">Gyarados</span>
+            <span class="hxc-stats">HP 100 • S1</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Rail -->
+    <div class="right-rail">
+      <div class="rail-header">⚙ Resources</div>
+      <div class="stat-grid">
+        <div class="stat-tile"><div class="st-icon">🃏</div><div class="st-val">22</div><div class="st-lbl">Deck</div></div>
+        <div class="stat-tile"><div class="st-icon">⚡</div><div class="st-val">4</div><div class="st-lbl">Energy</div></div>
+        <div class="stat-tile"><div class="st-icon">🎁</div><div class="st-val">1/3</div><div class="st-lbl">Prizes</div></div>
+        <div class="stat-tile"><div class="st-icon">🗑</div><div class="st-val">5</div><div class="st-lbl">Discard</div></div>
+      </div>
+
+      <div class="rail-header">🏆 Scoreboard</div>
+      <div class="vs-scoreboard">
+        <div class="vs-row"><span class="vs-name">💧 Blue (You)</span><span class="vs-score">2 / 3</span></div>
+        <div class="vs-row"><span class="vs-name">🔥 Red (Bot)</span><span class="vs-score">1 / 3</span></div>
+      </div>
+
+      <div class="rail-header">📜 Battle Log</div>
+      <div class="log-feed">
+        <div class="log-line"><span class="lt">[T5]</span>Drew Water Energy.</div>
+        <div class="log-line"><span class="lt">[T4]</span>Charizard → Fire Blast (50 DMG).</div>
+        <div class="log-line"><span class="lt">[T4]</span>Opp end turn.</div>
+        <div class="log-line"><span class="lt">[T3]</span>Blastoise → Hydro Pump (60 DMG).</div>
+        <div class="log-line"><span class="lt">[T3]</span>Attached Water Energy.</div>
+        <div class="log-line"><span class="lt">[T2]</span>KO! Arcanine fell.</div>
+        <div class="log-line"><span class="lt">[T2]</span>Drew prize card.</div>
+        <div class="log-line"><span class="lt">[T1]</span>Match started.</div>
+      </div>
+
+      <button class="end-turn-tactical">▶ End Turn</button>
+    </div>
+  </div>
+</body>
+</html>

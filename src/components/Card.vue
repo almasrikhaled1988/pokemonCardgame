@@ -70,6 +70,7 @@
 import { computed } from 'vue'
 import type { Card } from '../types'
 import { useUIStore } from '../stores/uiStore'
+import { useGameStore } from '../stores/gameStore'
 import { getElementEmoji } from '../utils/gameUtils'
 
 const props = withDefaults(defineProps<{
@@ -79,39 +80,32 @@ const props = withDefaults(defineProps<{
   size: 'normal'
 })
 
-const store = useGameStore()
+const gameStore = useGameStore()
+const uiStore = useUIStore()
 
 function handleMouseEnter(event: MouseEvent) {
-  store.hoveredCard = props.card
-  store.hoveredCardPosition = { x: event.clientX, y: event.clientY }
+  gameStore.hoveredCard = props.card
+  gameStore.hoveredCardPosition = { x: event.clientX, y: event.clientY }
+  uiStore.showTooltip(props.card, event.clientX, event.clientY)
 }
 
 function handleMouseLeave() {
-  store.hoveredCard = null
-  store.hoveredCardPosition = null
+  gameStore.hoveredCard = null
+  gameStore.hoveredCardPosition = null
+  uiStore.hideTooltip()
+}
+
+function handleMouseMove(event: MouseEvent) {
+  uiStore.updateTooltipPosition(event.clientX, event.clientY)
 }
 
 function handleRightClick() {
-  store.selectedCard = props.card
+  gameStore.selectedCard = props.card
 }
 
 defineEmits<{
   (e: 'click', card: Card): void
 }>()
-
-const uiStore = useUIStore()
-
-function handleMouseEnter(e: MouseEvent) {
-  uiStore.showTooltip(props.card, e.clientX, e.clientY)
-}
-
-function handleMouseLeave() {
-  uiStore.hideTooltip()
-}
-
-function handleMouseMove(e: MouseEvent) {
-  uiStore.updateTooltipPosition(e.clientX, e.clientY)
-}
 
 const cardClasses = computed(() => {
   const classes = []

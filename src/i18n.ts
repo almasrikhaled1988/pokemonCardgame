@@ -16,7 +16,9 @@ const messages = {
             fire: 'Fire',
             water: 'Water',
             grass: 'Grass',
-            electric: 'Electric'
+            electric: 'Electric',
+            psychic: 'Psychic',
+            fighting: 'Fighting'
         },
         gameOver: 'Game Over!',
         wins: '{winner} Wins!',
@@ -58,7 +60,9 @@ const messages = {
             fire: 'Feuer',
             water: 'Wasser',
             grass: 'Gras',
-            electric: 'Elektro'
+            electric: 'Elektro',
+            psychic: 'Psycho',
+            fighting: 'Kampf'
         },
         gameOver: 'Spiel vorbei!',
         wins: '{winner} Gewinnt!',
@@ -100,7 +104,9 @@ const messages = {
             fire: 'نار',
             water: 'ماء',
             grass: 'عشب',
-            electric: 'كهرباء'
+            electric: 'كهرباء',
+            psychic: 'نفسي',
+            fighting: 'قتال'
         },
         gameOver: 'انتهت اللعبة!',
         wins: '{winner} فاز!',

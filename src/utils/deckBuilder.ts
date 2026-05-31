@@ -79,9 +79,10 @@ export function createDeck(element: string, customPokemon?: Card[]): Card[] {
         })
     }
 
-    // Add trainer cards
-    const trainers = JSON.parse(JSON.stringify(TRAINER_CARDS)) as Card[]
-    trainers.forEach((card) => {
+    // Add trainer cards (4 randomly chosen for variety)
+    const trainerPool = JSON.parse(JSON.stringify(TRAINER_CARDS)) as Card[]
+    const shuffledTrainers = trainerPool.sort(() => Math.random() - 0.5).slice(0, 4)
+    shuffledTrainers.forEach((card) => {
         card.uniqueId = Math.random().toString(36).substr(2, 9)
         card.category = 'trainer'
         deck.push(card)

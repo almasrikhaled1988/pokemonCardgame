@@ -80,7 +80,44 @@ const POKEMON_IDS: Record<string, number> = {
     shinx: 403,
     luxio: 404,
     luxray: 405,
-    pachirisu: 417
+    pachirisu: 417,
+
+    // Psychic
+    abra: 63,
+    kadabra: 64,
+    alakazam: 65,
+    gastly: 92,
+    haunter: 93,
+    gengar: 94,
+    mewtwo: 150,
+    mew: 151,
+    drowzee: 96,
+    hypno: 97,
+    ralts: 280,
+    kirlia: 281,
+    gardevoir: 282,
+    espeon: 196,
+    slowpoke: 79,
+    slowbro: 80,
+
+    // Fighting
+    machop: 66,
+    machoke: 67,
+    machamp: 68,
+    mankey: 56,
+    primeape: 57,
+    onix: 95,
+    geodude: 74,
+    graveler: 75,
+    golem: 76,
+    hitmonlee: 106,
+    hitmonchan: 107,
+    tyrogue: 236,
+    hitmontop: 237,
+    riolu: 447,
+    lucario: 448,
+    cubone: 104,
+    marowak: 105
 }
 
 /**

@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pokémon Card Game – Cinematic (V5)</title>
+  <style>
+    :root {
+      --fire: #ff4757;
+      --water: #00cec9;
+      --grass: #55efc4;
+      --electric: #fdcb6e;
+      --bg-dark: #000;
+      --bg-deep: #0a0a14;
+      --text: #fff;
+      --text-dim: rgba(255,255,255,0.5);
+      --gold: #ffd700;
+      --crimson: #ff4757;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ===== LAYOUT: Cinematic Boss-Battle =====
+       Inspired by JRPG boss screens. Big dramatic opponent at top with
+       a visible HP bar across the screen. Player has compact bottom UI.
+       Letterbox bars, particle hint, dramatic typography.
+    */
+
+    .scene {
+      position: relative;
+      height: 100vh;
+      background:
+        radial-gradient(ellipse at 50% 30%, rgba(255,71,87,0.15) 0%, transparent 60%),
+        radial-gradient(ellipse at 50% 90%, rgba(0,206,201,0.1) 0%, transparent 50%),
+        linear-gradient(180deg, #1a0a14 0%, #000 50%, #0a141a 100%);
+      overflow: hidden;
+    }
+
+    /* Letterbox bars */
+    .scene::before, .scene::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 30px;
+      background: var(--bg-dark);
+      z-index: 100;
+    }
+
+    .scene::before { top: 0; }
+    .scene::after { bottom: 0; }
+
+    /* Dramatic light rays */
+    .scene > .rays {
+      position: absolute;
+      inset: 0;
+      background:
+        repeating-linear-gradient(
+          90deg,
+          transparent 0px,
+          transparent 80px,
+          rgba(255,255,255,0.015) 80px,
+          rgba(255,255,255,0.015) 81px
+        );
+      pointer-events: none;
+    }
+
+    /* Top: Boss-style opponent bar */
+    .boss-banner {
+      position: absolute;
+      top: 30px;
+      left: 0;
+      right: 0;
+      padding: 16px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(180deg, rgba(0,0,0,0.8), transparent);
+      z-index: 10;
+    }
+
+    .boss-info {
+      max-width: 60%;
+    }
+
+    .boss-label {
+      font-size: 0.7rem;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--crimson);
+      font-weight: 900;
+      margin-bottom: 4px;
+    }
+
+    .boss-name {
+      font-size: 2rem;
+      font-weight: 900;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      text-shadow: 0 0 20px rgba(255,71,87,0.4);
+      line-height: 1;
+    }
+
+    .boss-subtitle {
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      letter-spacing: 2px;
+      margin-top: 4px;
+    }
+
+    .boss-hp-container {
+      width: 350px;
+      margin-top: 10px;
+    }
+
+    .boss-hp-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.7rem;
+      font-family: 'Courier New', monospace;
+      color: var(--crimson);
+      margin-bottom: 4px;
+      font-weight: 700;
+    }
+
+    .boss-hp-track {
+      height: 12px;
+      background: rgba(0,0,0,0.5);
+      border: 1px solid var(--crimson);
+      border-radius: 0;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 0 10px rgba(255,71,87,0.3);
+    }
+
+    .boss-hp-fill {
+      height: 100%;
+      width: 65%;
+      background: linear-gradient(90deg, var(--crimson), #ff8a8a);
+      box-shadow: inset 0 0 10px rgba(255,255,255,0.2);
+      transition: width 0.5s ease;
+    }
+
+    .boss-bench {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .boss-bench-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(255,71,87,0.15);
+      border: 1px solid var(--crimson);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .boss-bench-icon img {
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
+      filter: drop-shadow(0 0 4px rgba(255,71,87,0.5));
+    }
+
+    /* Boss Stage - massive opponent visual */
+    .boss-stage {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -65%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+    }
+
+    .boss-pokemon-img {
+      width: 280px;
+      height: 280px;
+      object-fit: contain;
+      filter:
+        drop-shadow(0 0 40px rgba(255,71,87,0.6))
+        drop-shadow(0 0 80px rgba(255,71,87,0.3));
+      transform: scaleX(-1);
+      animation: boss-float 4s ease-in-out infinite;
+    }
+
+    @keyframes boss-float {
+      0%, 100% { transform: scaleX(-1) translateY(0); }
+      50% { transform: scaleX(-1) translateY(-12px); }
+    }
+
+    .boss-status-effects {
+      position: absolute;
+      top: 0;
+      right: -40px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .status-pip {
+      padding: 4px 8px;
+      background: rgba(0,0,0,0.7);
+      border: 1px solid var(--crimson);
+      border-radius: 4px;
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    /* VS Sigil */
+    .vs-sigil {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 6;
+      width: 80px;
+      height: 80px;
+      pointer-events: none;
+    }
+
+    .vs-sigil::before, .vs-sigil::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border: 1px solid var(--gold);
+      border-radius: 50%;
+      animation: ring 3s linear infinite;
+    }
+
+    .vs-sigil::after {
+      animation-delay: -1.5s;
+      animation-direction: reverse;
+    }
+
+    @keyframes ring {
+      0% { transform: rotate(0deg) scale(1); opacity: 0.6; }
+      50% { transform: rotate(180deg) scale(1.2); opacity: 0.2; }
+      100% { transform: rotate(360deg) scale(1); opacity: 0.6; }
+    }
+
+    /* Player section: bottom HUD */
+    .player-hud {
+      position: absolute;
+      bottom: 30px;
+      left: 0;
+      right: 0;
+      z-index: 20;
+      padding: 0;
+    }
+
+    .player-stage {
+      position: relative;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 30px;
+      padding: 0 32px 12px;
+    }
+
+    .player-bench-cinematic {
+      display: flex;
+      gap: 8px;
+    }
+
+    .pbc-card {
+      width: 70px;
+      height: 92px;
+      background: linear-gradient(180deg, rgba(0,206,201,0.15), rgba(0,0,0,0.6));
+      border: 1px solid rgba(0,206,201,0.5);
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      transition: all 0.3s;
+    }
+
+    .pbc-card:hover {
+      transform: translateY(-6px);
+      border-color: var(--water);
+      box-shadow: 0 0 20px rgba(0,206,201,0.3);
+    }
+
+    .pbc-card img {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+    }
+
+    .pbc-name { font-size: 0.55rem; font-weight: 700; letter-spacing: 0.5px; }
+    .pbc-hp { font-size: 0.5rem; color: var(--water); font-family: monospace; }
+
+    /* Player Active Hero Card */
+    .hero-card {
+      width: 220px;
+      background: linear-gradient(180deg, rgba(0,206,201,0.15), rgba(0,0,0,0.85));
+      border: 2px solid var(--water);
+      border-radius: 8px;
+      padding: 14px;
+      backdrop-filter: blur(20px);
+      box-shadow:
+        0 0 40px rgba(0,206,201,0.3),
+        inset 0 1px 0 rgba(255,255,255,0.1);
+      position: relative;
+    }
+
+    .hero-card::before {
+      content: "";
+      position: absolute;
+      top: -2px;
+      left: 20%;
+      right: 20%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--water), transparent);
+    }
+
+    .hc-label {
+      font-size: 0.6rem;
+      letter-spacing: 3px;
+      color: var(--water);
+      font-weight: 800;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .hc-name {
+      font-size: 1.4rem;
+      font-weight: 900;
+      letter-spacing: 1px;
+      text-shadow: 0 0 16px rgba(0,206,201,0.4);
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .hc-image {
+      width: 100%;
+      height: 110px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 8px 0;
+    }
+
+    .hc-image img {
+      height: 110px;
+      object-fit: contain;
+      filter: drop-shadow(0 0 16px rgba(0,206,201,0.4));
+    }
+
+    .hc-hp-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.7rem;
+      font-family: monospace;
+      color: var(--water);
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .hc-hp-track {
+      height: 8px;
+      background: rgba(0,0,0,0.6);
+      border: 1px solid var(--water);
+      overflow: hidden;
+    }
+
+    .hc-hp-fill {
+      height: 100%;
+      width: 79%;
+      background: linear-gradient(90deg, var(--water), #74e8e3);
+    }
+
+    .hc-attacks {
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .cinematic-attack {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: rgba(0,206,201,0.1);
+      border: 1px solid rgba(0,206,201,0.3);
+      border-left: 3px solid var(--water);
+      border-radius: 2px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      transition: all 0.2s;
+      color: var(--text);
+    }
+
+    .cinematic-attack:hover {
+      background: rgba(0,206,201,0.2);
+      border-left-width: 6px;
+      padding-left: 15px;
+    }
+
+    .cinematic-attack .ca-name { font-weight: 700; letter-spacing: 0.5px; }
+    .cinematic-attack .ca-cost { color: var(--electric); font-family: monospace; }
+    .cinematic-attack .ca-dmg { color: var(--crimson); font-weight: 800; font-family: monospace; }
+
+    /* Side info pillars */
+    .side-pillar {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      z-index: 10;
+    }
+
+    .side-pillar.left { left: 24px; }
+    .side-pillar.right { right: 24px; }
+
+    .pillar-stat {
+      width: 70px;
+      background: rgba(0,0,0,0.7);
+      border: 1px solid rgba(255,215,0,0.3);
+      border-radius: 0;
+      padding: 10px 6px;
+      text-align: center;
+      backdrop-filter: blur(10px);
+      position: relative;
+    }
+
+    .pillar-stat::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 30%;
+      height: 1px;
+      background: var(--gold);
+    }
+
+    .pillar-stat .ps-icon { font-size: 1.2rem; }
+    .pillar-stat .ps-val {
+      font-size: 1.1rem;
+      font-weight: 900;
+      font-family: monospace;
+      color: var(--gold);
+      margin-top: 4px;
+    }
+    .pillar-stat .ps-lbl {
+      font-size: 0.5rem;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    /* Hand: bottom slim row */
+    .cinematic-hand {
+      position: absolute;
+      bottom: 30px;
+      left: 0;
+      right: 0;
+      padding: 8px 32px;
+      background: linear-gradient(180deg, transparent, rgba(0,0,0,0.85));
+      z-index: 30;
+      display: none;
+    }
+
+    /* Hand reveal drawer */
+    .hand-drawer {
+      position: absolute;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .hand-toggle {
+      background: linear-gradient(180deg, rgba(255,215,0,0.15), rgba(0,0,0,0.8));
+      border: 1px solid var(--gold);
+      border-bottom: none;
+      padding: 6px 24px;
+      border-radius: 8px 8px 0 0;
+      color: var(--gold);
+      font-size: 0.7rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      font-weight: 800;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+    }
+
+    .hand-deck {
+      display: flex;
+      gap: 6px;
+      padding: 12px 16px;
+      background: rgba(0,0,0,0.9);
+      border: 1px solid var(--gold);
+      backdrop-filter: blur(20px);
+      max-width: 90vw;
+      overflow-x: auto;
+    }
+
+    .cine-card {
+      min-width: 70px;
+      height: 90px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(0,0,0,0.8));
+      border: 1px solid rgba(255,215,0,0.3);
+      padding: 6px;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .cine-card:hover {
+      transform: translateY(-12px) scale(1.06);
+      border-color: var(--gold);
+      box-shadow: 0 0 20px rgba(255,215,0,0.3);
+      z-index: 10;
+    }
+
+    .cine-card .cc-icon { font-size: 1.1rem; }
+    .cine-card .cc-name { font-size: 0.5rem; font-weight: 700; letter-spacing: 0.5px; text-align: center; line-height: 1.1; }
+    .cine-card .cc-sub { font-size: 0.45rem; color: var(--text-dim); font-family: monospace; }
+
+    /* Turn announcement */
+    .turn-announce {
+      position: absolute;
+      top: 110px;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      z-index: 8;
+    }
+
+    .turn-announce .ta-line {
+      font-size: 0.65rem;
+      letter-spacing: 6px;
+      color: var(--gold);
+      font-weight: 800;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .turn-announce .ta-big {
+      font-size: 1.4rem;
+      font-weight: 900;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--text);
+      text-shadow: 0 0 20px rgba(255,215,0,0.4);
+    }
+
+    /* End Turn floating button */
+    .end-turn-cinematic {
+      position: absolute;
+      bottom: 50px;
+      right: 24px;
+      background: linear-gradient(135deg, var(--crimson), #ff8a8a);
+      border: none;
+      color: white;
+      padding: 14px 28px;
+      border-radius: 0;
+      font-weight: 900;
+      font-size: 0.8rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      cursor: pointer;
+      z-index: 40;
+      box-shadow: 0 0 30px rgba(255,71,87,0.4);
+      clip-path: polygon(8% 0, 100% 0, 92% 100%, 0% 100%);
+      transition: all 0.2s;
+    }
+
+    .end-turn-cinematic:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 40px rgba(255,71,87,0.6);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="scene">
+    <div class="rays"></div>
+
+    <!-- Boss Banner (top) -->
+    <div class="boss-banner">
+      <div class="boss-info">
+        <div class="boss-label">⚠ Boss Encounter</div>
+        <div class="boss-name">CHARIZARD</div>
+        <div class="boss-subtitle">Stage 2 • Fire Type • Lv. 38</div>
+        <div class="boss-hp-container">
+          <div class="boss-hp-row">
+            <span>HP</span>
+            <span>78 / 120</span>
+          </div>
+          <div class="boss-hp-track"><div class="boss-hp-fill"></div></div>
+        </div>
+      </div>
+      <div class="boss-bench">
+        <div class="boss-bench-icon">
+          <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/59.png" alt="Arcanine" />
+        </div>
+        <div class="boss-bench-icon">
+          <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/136.png" alt="Flareon" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Turn Announce -->
+    <div class="turn-announce">
+      <div class="ta-line">— Turn 5 —</div>
+      <div class="ta-big">Your Move</div>
+    </div>
+
+    <!-- Boss Stage -->
+    <div class="boss-stage">
+      <img class="boss-pokemon-img" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/6.png" alt="Charizard" />
+      <div class="boss-status-effects">
+        <div class="status-pip">🔥 BURN</div>
+      </div>
+    </div>
+
+    <!-- Side Pillars -->
+    <div class="side-pillar left">
+      <div class="pillar-stat">
+        <div class="ps-icon">🃏</div>
+        <div class="ps-val">22</div>
+        <div class="ps-lbl">Deck</div>
+      </div>
+      <div class="pillar-stat">
+        <div class="ps-icon">⚡</div>
+        <div class="ps-val">4</div>
+        <div class="ps-lbl">Energy</div>
+      </div>
+    </div>
+
+    <div class="side-pillar right">
+      <div class="pillar-stat">
+        <div class="ps-icon">🎁</div>
+        <div class="ps-val">1/3</div>
+        <div class="ps-lbl">Prizes</div>
+      </div>
+      <div class="pillar-stat">
+        <div class="ps-icon">🗑</div>
+        <div class="ps-val">5</div>
+        <div class="ps-lbl">Discard</div>
+      </div>
+    </div>
+
+    <!-- Player HUD (bottom) -->
+    <div class="player-hud">
+      <div class="player-stage">
+        <div class="player-bench-cinematic">
+          <div class="pbc-card">
+            <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/8.png" alt="Wartortle" />
+            <span class="pbc-name">Wartortle</span>
+            <span class="pbc-hp">60/60</span>
+          </div>
+        </div>
+
+        <div class="hero-card">
+          <div class="hc-label">⚔ Active</div>
+          <div class="hc-name">Blastoise</div>
+          <div class="hc-image">
+            <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/9.png" alt="Blastoise" />
+          </div>
+          <div class="hc-hp-row">
+            <span>HP</span>
+            <span>95 / 120</span>
+          </div>
+          <div class="hc-hp-track"><div class="hc-hp-fill"></div></div>
+          <div class="hc-attacks">
+            <button class="cinematic-attack">
+              <span class="ca-name">Hydro Pump</span>
+              <span class="ca-cost">3⚡</span>
+              <span class="ca-dmg">60</span>
+            </button>
+            <button class="cinematic-attack">
+              <span class="ca-name">Water Gun</span>
+              <span class="ca-cost">1⚡</span>
+              <span class="ca-dmg">30</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="player-bench-cinematic">
+          <div class="pbc-card">
+            <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/131.png" alt="Lapras" />
+            <span class="pbc-name">Lapras</span>
+            <span class="pbc-hp">80/80</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hand Drawer -->
+    <div class="hand-drawer">
+      <div class="hand-toggle">▲ Hand · 6</div>
+      <div class="hand-deck">
+        <div class="cine-card">
+          <span class="cc-icon">💧</span>
+          <span class="cc-name">Squirtle</span>
+          <span class="cc-sub">HP 50</span>
+        </div>
+        <div class="cine-card">
+          <span class="cc-icon">💧</span>
+          <span class="cc-name">Water Energy</span>
+          <span class="cc-sub">+1⚡</span>
+        </div>
+        <div class="cine-card">
+          <span class="cc-icon">💧</span>
+          <span class="cc-name">Vaporeon</span>
+          <span class="cc-sub">HP 90</span>
+        </div>
+        <div class="cine-card">
+          <span class="cc-icon">📜</span>
+          <span class="cc-name">Potion</span>
+          <span class="cc-sub">+30 HP</span>
+        </div>
+        <div class="cine-card">
+          <span class="cc-icon">💧</span>
+          <span class="cc-name">Water Energy</span>
+          <span class="cc-sub">+1⚡</span>
+        </div>
+        <div class="cine-card">
+          <span class="cc-icon">💧</span>
+          <span class="cc-name">Gyarados</span>
+          <span class="cc-sub">HP 100</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- End Turn -->
+    <button class="end-turn-cinematic">End Turn ▶</button>
+  </div>
+</body>
+</html>

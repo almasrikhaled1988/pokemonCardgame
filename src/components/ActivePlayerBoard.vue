@@ -1,290 +1,390 @@
 <template>
-  <div class="active-board" :class="{ 'evolution-mode': pendingEvolution }">
-    <!-- Evolution Overlay Banner -->
+  <div class="bento" :class="{ 'evolution-mode': pendingEvolution }">
+    <!-- Evolution overlay banner -->
     <div v-if="pendingEvolution" class="evolution-banner">
-      <div class="banner-content">
-        <span class="pulse-text">{{ t('selectEvolution') }} <strong>{{ pendingEvolution.name }}</strong></span>
-        <button class="btn-cancel-evo" @click="$emit('cancelEvolution')">{{ t('cancel') }}</button>
+      <span class="pulse-text">{{ t('selectEvolution') }} <strong>{{ pendingEvolution.name }}</strong></span>
+      <button class="btn-cancel-evo" @click="$emit('cancelEvolution')">{{ t('cancel') }}</button>
+    </div>
+
+    <!-- Header -->
+    <div class="header">
+      <div class="game-title">
+        <span class="title-emoji">🎴</span>
+        <span class="title-text">{{ name }}</span>
+      </div>
+      <div class="turn-pill">
+        <span>⚔️</span>
+        <span>{{ t('turn') }} {{ turnNumber }}</span>
+      </div>
+      <div class="scoreline">
+        <div class="scoreline-item">
+          <span class="sl-label">{{ t('yourTurn') }}</span>
+          <div class="score-dots">
+            <div
+              v-for="i in 3"
+              :key="'you-'+i"
+              class="score-dot"
+              :class="{ 'filled': i <= score, 'you': i <= score }"
+            ></div>
+          </div>
+        </div>
+        <div class="scoreline-item">
+          <div class="score-dots">
+            <div
+              v-for="i in 3"
+              :key="'opp-'+i"
+              class="score-dot"
+              :class="{ 'filled': i <= (opponent?.score || 0), 'opp': i <= (opponent?.score || 0) }"
+            ></div>
+          </div>
+          <span class="sl-label">{{ opponent?.name || 'Opp' }}</span>
+        </div>
+        <button class="pi-mute" @click="toggleMute" :title="isMuted ? t('unmute') : t('mute')">
+          {{ isMuted ? '🔇' : '🔊' }}
+        </button>
+        <button class="end-turn-cozy" @click="$emit('endTurn')" :disabled="isBotTurn">
+          {{ t('endTurn') }} →
+        </button>
       </div>
     </div>
-    <!-- Main Play Area -->
-    <div class="play-area">
-      <!-- Center: Focus everything here -->
-      <div class="center-column">
-        <!-- Player Info (Moved from App.vue) -->
-        <div class="player-info-integrated">
-          <div class="pi-left">
-            <span class="pi-your-turn">{{ t('yourTurn') }}</span>
-            <span class="pi-name">{{ name }}</span>
+
+    <!-- Opponent box -->
+    <div class="bento-box opponent-box">
+      <div class="opp-tag">
+        <span>{{ getEmoji(opponent?.element) }}</span>
+        <span>{{ opponent?.name || 'Opponent' }}</span>
+      </div>
+
+      <!-- Mobile-only inline opponent bench -->
+      <div class="opp-inline-bench">
+        <div
+          v-for="benchCard in (opponent?.bank || []).slice(0, 3)"
+          :key="benchCard.uniqueId"
+          class="inline-bench-mini"
+          @mouseenter="handleMouseEnter($event, benchCard)"
+          @mouseleave="handleMouseLeave"
+        >
+          <img :src="getPokemonSprite(benchCard.name)" :alt="benchCard.name" @error="handleImageError" />
+        </div>
+      </div>
+
+      <!-- Active VFX -->
+      <div
+        v-if="activeVfx && activeVfx.target === 'player' + (opponent?.id || 2)"
+        class="combat-vfx-overlay"
+        :class="[activeVfx.type, 'shake']"
+        :key="activeVfx.timestamp"
+      ></div>
+
+      <!-- Floating damage numbers -->
+      <div class="damage-numbers-layer">
+        <div
+          v-for="dn in oppDamageNumbers"
+          :key="dn.id"
+          class="damage-number"
+          :class="dn.type"
+        >
+          {{ dn.type === 'heal' ? '+' : '-' }}{{ dn.value }}
+        </div>
+      </div>
+
+      <template v-if="opponent?.active">
+        <img
+          class="opp-poke-img"
+          :src="getPokemonImage(opponent.active.name)"
+          :alt="opponent.active.name"
+          @error="handleImageError"
+          @mouseenter="handleMouseEnter($event, opponent.active)"
+          @mouseleave="handleMouseLeave"
+        />
+        <div class="opp-poke-name">{{ opponent.active.name }}</div>
+        <div v-if="opponent.active.statusEffects?.length" class="status-effects-row">
+          <span
+            v-for="effect in opponent.active.statusEffects"
+            :key="effect"
+            class="status-badge"
+            :class="effect"
+          >
+            <span v-if="effect === 'poisoned'">☠️</span>
+            <span v-else-if="effect === 'burned'">🔥</span>
+            <span v-else-if="effect === 'paralyzed'">⚡</span>
+            <span v-else-if="effect === 'asleep'">💤</span>
+          </span>
+        </div>
+        <div class="opp-poke-hp">
+          <div class="hp-text-cozy">
+            <span>HP</span>
+            <span>{{ opponent.active.currentHp }} / {{ opponent.active.hp }}</span>
           </div>
-          <div class="pi-center">
-            <span class="pi-turn-number">{{ t('turn') }} {{ turnNumber }}</span>
-          </div>
-          <div class="pi-right">
-            <span class="pi-score">{{ t('score') }}: {{ score }}/3</span>
-            <button class="pi-mute" @click="toggleMute" :title="isMuted ? t('unmute') : t('mute')">
-              {{ isMuted ? '🔇' : '🔊' }}
-            </button>
-            <button class="pi-end-turn" @click="$emit('endTurn')" :disabled="isBotTurn">
-              {{ t('endTurn') }}
-            </button>
+          <div class="hp-track-cozy">
+            <div
+              class="hp-fill-cozy"
+              :class="getCardHpClass(opponent.active)"
+              :style="{ width: getCardHpPercent(opponent.active) + '%' }"
+            ></div>
           </div>
         </div>
+      </template>
+      <template v-else>
+        <div class="empty-active-cozy">{{ t('noActivePokemon') }}</div>
+      </template>
 
-        <div class="active-zone" @click="handleActiveClick">
-          <!-- Integrated Zones -->
-          <div class="integrated-zones-left">
-            <div class="zone-stack deck-zone mini" @click="$emit('deckClick')">
-              
-              <div class="card-back mini">{{ deck.length }}</div>
-            </div>
-            
-            <div class="zone-stack energy-zone mini">
-              
-              <div class="energy-pile mini">
-                <div 
-                  v-for="(energy, i) in energyZone.slice(0, 3)" 
-                  :key="energy.uniqueId"
-                  class="mini-icon"
-                  :class="energy.element"
-                >
-                  {{ getEmoji(energy.element) }}
-                </div>
-              </div>
-              <div class="zone-count mini">{{ energyZone.length }}</div>
-            </div>
-          </div>
+      <div class="opp-resources-mini">
+        <span title="Hand">✋ {{ opponent?.hand?.length || 0 }}</span>
+        <span title="Deck">🃏 {{ opponent?.deck?.length || 0 }}</span>
+        <span title="Prizes">🎁 {{ opponent?.prizeCards?.length || 0 }}</span>
+      </div>
+    </div>
 
-          <div class="active-card-only-container">
-            <div v-if="active" class="active-card-container">
-              <!-- Combat VFX Overlay -->
-              <div 
-                v-if="activeVfx && activeVfx.target === 'player' + playerId" 
-                class="combat-vfx-overlay" 
-                :class="activeVfx.type"
-                :key="activeVfx.timestamp"
+    <!-- Opponent bench (tablet+) -->
+    <div class="bento-box opp-bench-box">
+      <div class="bench-title">🏕️ Their Bench</div>
+      <div class="bench-grid">
+        <div
+          v-for="(slot, idx) in oppBenchSlots"
+          :key="'oppbench-'+idx"
+          class="bench-tile"
+          :class="{ empty: !slot }"
+        >
+          <template v-if="slot">
+            <img
+              :src="getPokemonSprite(slot.name)"
+              :alt="slot.name"
+              @error="handleImageError"
+              @mouseenter="handleMouseEnter($event, slot)"
+              @mouseleave="handleMouseLeave"
+            />
+            <span class="bt-name">{{ slot.name }}</span>
+            <span class="bt-hp">{{ slot.currentHp }}/{{ slot.hp }}</span>
+          </template>
+          <span v-else>+</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Player active -->
+    <div
+      class="bento-box player-box"
+      :class="{ 'drag-target': dragOverActive }"
+      @click="handleActiveClick"
+      @dragover.prevent="onDragOverActive"
+      @dragleave="onDragLeaveZone"
+      @drop.prevent="onDropOnActive"
+    >
+      <div class="you-tag">
+        <span>{{ getEmoji(playerElement) }}</span>
+        <span>{{ name }}</span>
+      </div>
+
+      <!-- Mobile-only inline player bench -->
+      <div class="player-inline-bench">
+        <div
+          v-for="benchCard in bank.slice(0, 3)"
+          :key="benchCard.uniqueId"
+          class="inline-bench-mini"
+          :class="{ 'evo-target': pendingEvolution }"
+          @click.stop="handleBenchSlotClick(benchCard)"
+          @mouseenter="handleMouseEnter($event, benchCard)"
+          @mouseleave="handleMouseLeave"
+        >
+          <img :src="getPokemonSprite(benchCard.name)" :alt="benchCard.name" @error="handleImageError" />
+        </div>
+      </div>
+
+      <!-- Active VFX -->
+      <div
+        v-if="activeVfx && activeVfx.target === 'player' + playerId"
+        class="combat-vfx-overlay"
+        :class="[activeVfx.type, 'shake']"
+        :key="activeVfx.timestamp"
+      ></div>
+
+      <!-- Floating damage numbers -->
+      <div class="damage-numbers-layer">
+        <div
+          v-for="dn in playerDamageNumbers"
+          :key="dn.id"
+          class="damage-number"
+          :class="dn.type"
+        >
+          {{ dn.type === 'heal' ? '+' : '-' }}{{ dn.value }}
+        </div>
+      </div>
+
+      <template v-if="active">
+        <div class="player-active-area">
+          <img
+            class="player-poke-img"
+            :src="getPokemonImage(active.name)"
+            :alt="active.name"
+            @error="handleImageError"
+            @mouseenter="handleMouseEnter($event, active)"
+            @mouseleave="handleMouseLeave"
+          />
+          <div class="player-poke-info">
+            <div class="player-poke-name">{{ active.name }}</div>
+            <div class="player-poke-stage">
+              {{ active.stage || 'basic' }} · {{ active.element }}
+            </div>
+
+            <div v-if="active.statusEffects?.length" class="status-effects-row left">
+              <span
+                v-for="effect in active.statusEffects"
+                :key="effect"
+                class="status-badge"
+                :class="effect"
+              >
+                <span v-if="effect === 'poisoned'">☠️</span>
+                <span v-else-if="effect === 'burned'">🔥</span>
+                <span v-else-if="effect === 'paralyzed'">⚡</span>
+                <span v-else-if="effect === 'asleep'">💤</span>
+              </span>
+            </div>
+
+            <div class="hp-text-cozy">
+              <span>HP</span>
+              <span>{{ active.currentHp }} / {{ active.hp }}</span>
+            </div>
+            <div class="hp-track-cozy">
+              <div
+                class="hp-fill-cozy water"
+                :class="hpClass"
+                :style="{ width: hpPercent + '%' }"
               ></div>
+            </div>
 
-              <!-- Large Active Card -->
-              <div 
-                class="active-card" 
-                :class="active.element"
-                @contextmenu.prevent="handleRightClick($event, active)"
+            <div v-if="active.attachedEnergy?.length" class="attached-energy-row">
+              <span v-for="e in active.attachedEnergy" :key="e.uniqueId" class="energy-pip">
+                {{ getEmoji(e.element) }}
+              </span>
+            </div>
+
+            <div class="attack-stack-cozy">
+              <button
+                v-for="(attack, index) in active.attacks"
+                :key="index"
+                class="cozy-attack"
+                :class="{ disabled: energyZone.length < attack.energyCost }"
+                @click.stop="handleAttackClick(attack, index)"
               >
-                <div class="card-top">
-                  <div class="card-name-group">
-                    <span 
-                      class="card-name"
-                      @mouseenter="handleMouseEnter($event, active)"
-                      @mouseleave="handleMouseLeave"
-                    >{{ active.name }}</span>
-                    <span v-if="active.stage" class="card-stage-label">{{ active.stage }}</span>
-                  </div>
-                  <span class="card-hp" :class="hpClass">{{ active.currentHp }}/{{ active.hp }} HP</span>
-                </div>
-                
-                <div class="card-art">
-                  <div v-if="active.statusEffects?.length" class="status-effects-overlay">
-                    <span v-for="effect in active.statusEffects" :key="effect" class="status-badge" :class="effect">
-                      <span v-if="effect === 'poisoned'">☠️</span>
-                      <span v-else-if="effect === 'burned'">🔥</span>
-                      <span v-else-if="effect === 'paralyzed'">⚡</span>
-                      <span v-else-if="effect === 'asleep'">💤</span>
-                      {{ effect }}
-                    </span>
-                  </div>
-                  <img 
-                    :src="getPokemonImage(active.name)" 
-                    :alt="active.name"
-                    class="pokemon-image"
-                    @error="handleImageError"
-                  />
-                </div>
-                
-                <div class="hp-bar-large">
-                  <div class="hp-fill" :style="{ width: hpPercent + '%' }" :class="hpClass"></div>
-                </div>
-                
-                <div class="attacks-section">
-                  <button 
-                    v-for="(attack, index) in active.attacks" 
-                    :key="index"
-                    class="attack-button"
-                    :class="{ disabled: energyZone.length < attack.energyCost }"
-                    @click.stop="$emit('attack', index)"
-                  >
-                    <span class="attack-name">{{ attack.name }}</span>
-                    <span class="attack-cost">{{ attack.energyCost }}⚡</span>
-                    <span class="attack-damage">{{ attack.damage }} DMG</span>
-                  </button>
-                </div>
-                
-                <div v-if="active.attachedEnergy?.length" class="attached-energy">
-                  <span v-for="e in active.attachedEnergy" :key="e.uniqueId" class="attached-icon">
-                    {{ getEmoji(e.element) }}
-                  </span>
-                </div>
-              </div>
+                <span class="ck-name">{{ attack.name }}</span>
+                <span class="ck-cost">{{ attack.energyCost }}⚡</span>
+                <span class="ck-dmg">{{ attack.damage }} DMG</span>
+              </button>
             </div>
-            
-            <div v-else class="empty-active">
-              <span>{{ t('playPokemonFromHand') }}</span>
-            </div>
-          </div>
-
-          <div class="integrated-zones-right">
-            <div class="zone-stack prizes-zone mini">
-              <div class="prizes-stack mini">
-                <div v-for="(p, i) in prizeCards" :key="i" class="prize-card mini">🎁</div>
-              </div>
-              <div class="zone-count mini">{{ prizeCards.length }}/3</div>
-            </div>
-            
-            <div class="zone-stack discard-zone mini">
-              <div class="discard-pile mini">
-                <div v-if="discardPile.length" class="discard-top mini">
-                  {{ discardPile.length }}
-                </div>
-                <div v-else class="discard-empty mini">—</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="battle-log-integrated">
-            <BattleLog :logs="logs" />
           </div>
         </div>
-        
-        <!-- Bench (Moved below side zones) -->
-        <div class="bench-zone integrated">
-          
-          <div class="bench-slots mini">
-            <div 
-              v-for="(slot, idx) in benchSlots" 
-              :key="idx" 
-              class="bench-slot mini"
-              :class="{ filled: slot, 'evo-target': pendingEvolution && slot }"
-              @click="handleBenchSlotClick(slot)"
-            >
-              <div 
-                v-if="slot" 
-                class="active-card bench-version" 
-                :class="slot.element"
-                @mouseenter="handleMouseEnter($event, slot)"
-                @mouseleave="handleMouseLeave"
-                @contextmenu.prevent="handleRightClick($event, slot)"
-              >
-                <div class="card-top">
-                  <div class="card-name-group">
-                    <span 
-                      class="card-name"
-                      @mouseenter="handleMouseEnter($event, slot)"
-                      @mouseleave="handleMouseLeave"
-                    >{{ slot.name }}</span>
-                  </div>
-                  <span class="card-hp" :class="getCardHpClass(slot)">{{ slot.currentHp }}/{{ slot.hp }}</span>
-                </div>
-                <div class="card-art">
-                  <div v-if="slot.statusEffects?.length" class="status-effects-overlay mini">
-                    <span v-for="effect in slot.statusEffects" :key="effect" class="status-badge mini" :class="effect">
-                      <span v-if="effect === 'poisoned'">☠️</span>
-                      <span v-else-if="effect === 'burned'">🔥</span>
-                      <span v-else-if="effect === 'paralyzed'">⚡</span>
-                      <span v-else-if="effect === 'asleep'">💤</span>
-                    </span>
-                  </div>
-                  <img :src="getPokemonSprite(slot.name)" :alt="slot.name" class="pokemon-image" @error="handleImageError" />
-                </div>
-                <div class="hp-bar-large">
-                  <div class="hp-fill" :style="{ width: getCardHpPercent(slot) + '%' }" :class="getCardHpClass(slot)"></div>
-                </div>
-              </div>
-              <div v-else class="bench-placeholder mini">
-                <span>—</span>
-              </div>
-            </div>
-          </div>
+      </template>
+      <template v-else>
+        <div class="empty-active-cozy">{{ t('playPokemonFromHand') }}</div>
+      </template>
+
+      <div class="you-resources-mini">
+        <span title="Deck">🃏 {{ deck.length }}</span>
+        <span title="Energy">⚡ {{ energyZone.length }}</span>
+        <span title="Prizes">🎁 {{ prizeCards.length }}/3</span>
+        <span title="Discard">🗑️ {{ discardPile.length }}</span>
+      </div>
+    </div>
+
+    <!-- Player bench (tablet+) -->
+    <div
+      class="bento-box player-bench-box"
+      :class="{ 'drag-target': dragOverBench }"
+      @dragover.prevent="onDragOverBench"
+      @dragleave="onDragLeaveZone"
+      @drop.prevent="onDropOnBench"
+    >
+      <div class="bench-title">🏕️ {{ t('player1') === 'Player 1' ? 'Your Bench' : 'Bench' }}</div>
+      <div class="bench-grid">
+        <div
+          v-for="(slot, idx) in playerBenchSlots"
+          :key="'bench-'+idx"
+          class="bench-tile"
+          :class="{ empty: !slot, 'evo-target': pendingEvolution && slot }"
+          @click="handleBenchSlotClick(slot)"
+        >
+          <template v-if="slot">
+            <img
+              :src="getPokemonSprite(slot.name)"
+              :alt="slot.name"
+              @error="handleImageError"
+              @mouseenter="handleMouseEnter($event, slot)"
+              @mouseleave="handleMouseLeave"
+              @contextmenu.prevent="handleRightClick($event, slot)"
+            />
+            <span class="bt-name">{{ slot.name }}</span>
+            <span class="bt-hp">{{ slot.currentHp }}/{{ slot.hp }}</span>
+          </template>
+          <span v-else>+</span>
         </div>
       </div>
     </div>
 
     <!-- Hand -->
-    <div class="hand-section">
+    <div class="bento-box hand-box">
       <div class="hand-header">
-        <span class="hand-label">{{ t('yourHand') }}</span>
-        <span class="hand-count">{{ hand.length }} {{ t('cards') }}</span>
+        <div class="hand-title">
+          <span class="hand-emoji">🃏</span>
+          <span>{{ t('yourHand') }}</span>
+        </div>
+        <span class="hand-meta">{{ hand.length }} {{ t('cards') }} · tap to play</span>
       </div>
-      <div class="hand-cards">
-        <div 
-          v-for="card in hand" 
+      <div class="hand-row">
+        <div
+          v-for="card in hand"
           :key="card.uniqueId"
-          class="hand-card"
-          :class="[card.type, card.element, card.category, card.stage, { 'pending-source': pendingEvolution?.uniqueId === card.uniqueId }]"
+          class="cozy-card"
+          :class="[card.type, card.element, { 'pending-source': pendingEvolution?.uniqueId === card.uniqueId, 'dragging': draggingCard?.uniqueId === card.uniqueId }]"
+          draggable="true"
           @click="$emit('playCard', card)"
           @contextmenu.prevent="handleRightClick($event, card)"
+          @mouseenter="handleMouseEnter($event, card)"
+          @mouseleave="handleMouseLeave"
+          @dragstart="onDragStart($event, card)"
+          @dragend="onDragEnd"
         >
-          <template v-if="card.type === 'pokemon'">
-            <div class="active-card hand-version" :class="card.element">
-              <div class="card-top">
-                <div class="card-name-group">
-                  <span 
-                    class="card-name"
-                    @mouseenter="handleMouseEnter($event, card)"
-                    @mouseleave="handleMouseLeave"
-                  >{{ card.name }}</span>
-                  <span v-if="card.stage" class="card-stage-label">{{ card.stage }}</span>
-                </div>
-                <span class="card-hp" :class="getCardHpClass(card)">{{ card.hp }} HP</span>
-              </div>
-              <div class="card-art">
-                <img :src="getPokemonSprite(card.name)" :alt="card.name" class="pokemon-image" @error="handleImageError" />
-              </div>
-              <div class="hp-bar-large">
-                <div class="hp-fill" style="width: 100%" :class="getCardHpClass(card)"></div>
-              </div>
-              <div class="attacks-section">
-                <div v-for="(atk, idx) in card.attacks" :key="idx" class="attack-button mini disabled">
-                  <span class="attack-name">{{ atk.name }}</span>
-                  <span class="attack-cost">{{ atk.energyCost }}⚡</span>
-                  <span class="attack-damage">{{ atk.damage }} DMG</span>
-                </div>
-              </div>
-            </div>
-          </template>
-          <template v-else-if="card.type === 'energy'">
-            <div class="hc-energy-card">
-              <div class="hc-energy-icon">{{ getEmoji(card.element) }}</div>
-              <div 
-                class="hc-energy-text"
-                @mouseenter="handleMouseEnter($event, card)"
-                @mouseleave="handleMouseLeave"
-              >{{ t('energy') }}</div>
-            </div>
-          </template>
-          <template v-else>
-            <div class="hc-trainer-card">
-              <div class="hc-trainer-icon">📜</div>
-              <div 
-                class="hc-trainer"
-                @mouseenter="handleMouseEnter($event, card)"
-                @mouseleave="handleMouseLeave"
-              >{{ card.name }}</div>
-            </div>
-          </template>
+          <span class="cz-tag">
+            <template v-if="card.type === 'pokemon'">P</template>
+            <template v-else-if="card.type === 'energy'">⚡</template>
+            <template v-else>T</template>
+          </span>
+          <div class="cz-art">
+            <img
+              v-if="card.type === 'pokemon'"
+              :src="getPokemonImage(card.name)"
+              :alt="card.name"
+              @error="handleImageError"
+            />
+            <span v-else-if="card.type === 'energy'" class="cz-emoji-only">{{ getEmoji(card.element) }}</span>
+            <span v-else class="cz-emoji-only">📜</span>
+          </div>
+          <span class="cz-name">{{ card.name }}</span>
+          <span class="cz-meta">
+            <template v-if="card.type === 'pokemon'">
+              {{ card.stage || 'basic' }} · {{ card.hp }}HP
+            </template>
+            <template v-else-if="card.type === 'energy'">
+              +1⚡
+            </template>
+            <template v-else>
+              {{ t('elements.' + (card.element || 'fire')) }}
+            </template>
+          </span>
         </div>
       </div>
     </div>
   </div>
 </template>
 
+
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { Card } from '../types'
+import type { Card, Player, ElementType } from '../types'
 import { getPokemonImageUrl, getPokemonSpriteUrl } from '../utils/pokemonImages'
-import { soundManager } from '../utils/soundManager'
+import { soundService } from '../services/soundService'
 import { useGameStore } from '../stores/gameStore'
-import BattleLog from './BattleLog.vue'
 
 const { t } = useI18n()
 
@@ -303,6 +403,8 @@ const props = defineProps<{
   isBotTurn: boolean
   logs: string[]
   playerId: number
+  playerElement: ElementType | null
+  opponent: Player | null
   activeVfx: { type: string; target: string; timestamp: number } | null
 }>()
 
@@ -317,13 +419,11 @@ const emit = defineEmits<{
 }>()
 
 const store = useGameStore()
-const isMuted = ref(!soundManager.isEnabled())
+const isMuted = ref(soundService.isMuted())
 
 function toggleMute() {
-  soundManager.toggle()
-  isMuted.value = !soundManager.isEnabled()
+  isMuted.value = soundService.toggleMute()
 }
-
 
 function handleMouseEnter(event: MouseEvent, card: Card) {
   store.hoveredCard = card
@@ -335,8 +435,8 @@ function handleMouseLeave() {
   store.hoveredCardPosition = null
 }
 
-function handleRightClick(event: MouseEvent, card: Card) {
-  store.selectedCard = card;
+function handleRightClick(_event: MouseEvent, card: Card) {
+  store.selectedCard = card
 }
 
 const hpPercent = computed(() => {
@@ -351,32 +451,98 @@ const hpClass = computed(() => {
   return 'hp-low'
 })
 
-function getCardHpPercent(card: Card) {
+function getCardHpPercent(card: Card | null) {
   if (!card || !card.hp) return 0
   const current = card.currentHp !== undefined ? card.currentHp : card.hp
   return Math.max(0, (current / card.hp) * 100)
 }
 
-function getCardHpClass(card: Card) {
+function getCardHpClass(card: Card | null) {
   const pct = getCardHpPercent(card)
   if (pct > 60) return 'hp-high'
   if (pct > 30) return 'hp-medium'
   return 'hp-low'
 }
 
-const benchSlots = computed(() => {
-  // Return array of 3 slots (card or null)
-  return [
-    props.bank[0] || null,
-    props.bank[1] || null,
-    props.bank[2] || null
-  ]
-})
-
 function handleActiveClick() {
   if (props.pendingEvolution && props.active) {
     emit('evolve', props.active)
   }
+}
+
+// ===== Drag and drop =====
+const draggingCard = ref<Card | null>(null)
+const dragOverActive = ref(false)
+const dragOverBench = ref(false)
+
+function onDragStart(event: DragEvent, card: Card) {
+  draggingCard.value = card
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', card.uniqueId || '')
+  }
+}
+
+function onDragEnd() {
+  draggingCard.value = null
+  dragOverActive.value = false
+  dragOverBench.value = false
+}
+
+function onDragOverActive(event: DragEvent) {
+  if (!draggingCard.value) return
+  // Only highlight if it's a valid drop (pokemon, energy, or trainer)
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+  dragOverActive.value = true
+}
+
+function onDragOverBench(event: DragEvent) {
+  if (!draggingCard.value) return
+  // Only highlight if it's a basic Pokémon being dragged
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+  if (draggingCard.value.type === 'pokemon' && (draggingCard.value.stage === 'basic' || !draggingCard.value.stage)) {
+    dragOverBench.value = true
+  }
+}
+
+function onDragLeaveZone() {
+  dragOverActive.value = false
+  dragOverBench.value = false
+}
+
+function onDropOnActive() {
+  if (!draggingCard.value) return
+  const card = draggingCard.value
+  // Just call playCard — the store handles routing (energy attaches, trainers fire, pokemon become active if no active)
+  emit('playCard', card)
+  draggingCard.value = null
+  dragOverActive.value = false
+  dragOverBench.value = false
+}
+
+function onDropOnBench() {
+  if (!draggingCard.value) return
+  const card = draggingCard.value
+  // Only allow basic pokemon to bench, otherwise fall through to playCard
+  if (card.type === 'pokemon' && (card.stage === 'basic' || !card.stage)) {
+    emit('playCard', card)
+  } else if (card.type !== 'pokemon') {
+    // Non-pokemon cards still trigger their effect
+    emit('playCard', card)
+  } else {
+    soundService.play('error')
+  }
+  draggingCard.value = null
+  dragOverActive.value = false
+  dragOverBench.value = false
+}
+
+function handleAttackClick(attack: { energyCost: number }, index: number) {
+  if (props.energyZone.length < attack.energyCost) {
+    soundService.play('error')
+    return
+  }
+  emit('attack', index)
 }
 
 function handleBenchSlotClick(card: Card | null) {
@@ -387,7 +553,29 @@ function handleBenchSlotClick(card: Card | null) {
   }
 }
 
-function getEmoji(element: string | undefined) {
+const playerBenchSlots = computed<(Card | null)[]>(() => [
+  props.bank[0] || null,
+  props.bank[1] || null,
+  props.bank[2] || null,
+])
+
+const oppBenchSlots = computed<(Card | null)[]>(() => {
+  const bank = props.opponent?.bank || []
+  return [bank[0] || null, bank[1] || null, bank[2] || null]
+})
+
+// Floating damage numbers (filtered by side)
+const playerDamageNumbers = computed(() =>
+  store.damageNumbers.filter(d => d.target === ('player' + props.playerId))
+)
+
+const oppDamageNumbers = computed(() => {
+  const oppId = props.opponent?.id
+  if (!oppId) return []
+  return store.damageNumbers.filter(d => d.target === ('player' + oppId))
+})
+
+function getEmoji(element: string | undefined | null) {
   const emojis: Record<string, string> = {
     fire: '🔥', water: '💧', grass: '🌿', electric: '⚡', psychic: '🔮', fighting: '🥊'
   }
@@ -403,945 +591,1119 @@ function getPokemonSprite(name: string) {
 }
 
 function handleImageError(e: Event) {
-  // Fallback if image fails to load
   const img = e.target as HTMLImageElement
   img.style.display = 'none'
 }
 </script>
 
+
 <style scoped>
-.active-board {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  gap: 4px;
-  position: relative;
-  overflow: hidden;
-}
+/* ===== Cozy Bento Theme (light) ===== */
+.bento {
+  --cb-fire: #fb7185;
+  --cb-water: #60a5fa;
+  --cb-grass: #86efac;
+  --cb-electric: #fde047;
+  --cb-bg: #fef6e4;
+  --cb-bg-card: #fffaf0;
+  --cb-bg-soft: #fef0d4;
+  --cb-border: #f3d2a4;
+  --cb-text: #2d2620;
+  --cb-text-soft: #8a7a6a;
+  --cb-accent: #f582ae;
+  --cb-plum: #5e548e;
+  --cb-shadow: rgba(45,38,32,0.08);
+  --cb-shadow-lg: rgba(45,38,32,0.15);
 
-.play-area {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  justify-content: center;
-}
-
-/* Side Columns Removed from direct layout, moved inside center */
-
-/* Side Columns */
-.side-column {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  width: 100px;
-}
-
-.zone-stack {
-  background: var(--bg-zone);
-  border: 2px dashed var(--border-color);
-  border-radius: 12px;
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
-}
-
-.zone-label {
-  font-size: 0.65rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: var(--text-secondary);
-  letter-spacing: 0.5px;
-}
-
-.zone-count {
-  font-size: 0.75rem;
-  font-weight: 600;
-  opacity: 0.7;
-}
-
-/* Deck */
-.deck-visual {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.card-back {
-  width: 60px;
-  height: 84px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: white;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-}
-
-/* Energy Pile */
-.energy-pile {
-  position: relative;
-  height: 60px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-}
-
-.mini-energy {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1rem;
-  position: absolute;
-}
-
-.mini-energy.fire { background: var(--fire-gradient); }
-.mini-energy.water { background: var(--water-gradient); }
-.mini-energy.grass { background: var(--grass-gradient); }
-.mini-energy.electric { background: var(--electric-gradient); }
-
-/* Prizes */
-.prizes-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  align-items: center;
-}
-
-.prize-card {
-  width: 40px;
-  height: 28px;
-  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.9rem;
-}
-
-/* Discard */
-.discard-pile {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.discard-top {
-  width: 50px;
-  height: 70px;
-  background: #333;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.2rem;
-  font-weight: 700;
-}
-
-.discard-empty {
-  color: var(--text-secondary);
-  font-size: 1.5rem;
-}
-
-/* Center Column */
-.center-column {
-  flex: 1;
-  width: 100%;
-  max-width: 900px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0; /* Prevent flex overflow */
-}
-
-/* Player Info Integrated */
-.player-info-integrated {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 4px 12px;
-  background: rgba(0,0,0,0.4);
-  border-radius: 8px;
-  border: 1px solid rgba(255,255,255,0.1);
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.pi-left, .pi-right { display: flex; align-items: center; gap: 12px; }
-.pi-your-turn {
-  background: var(--fire-gradient);
-  font-size: 0.7rem;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-.pi-name { font-weight: 700; font-size: 1.1rem; }
-.pi-turn-number { font-size: 0.8rem; opacity: 0.6; font-weight: 800; }
-.pi-score { font-weight: 700; color: #4ade80; }
-.pi-mute {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #fff;
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-.pi-mute:hover {
-  background: rgba(255, 255, 255, 0.15);
-}
-.pi-end-turn {
-  background: #333;
-  border: 1px solid #555;
-  color: #fff;
-  padding: 4px 12px;
-  border-radius: 6px;
-  font-size: 0.8rem;
-  cursor: pointer;
-}
-.pi-end-turn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-/* Active Zone restructured */
-.active-zone {
-  flex: 1 1 0;
-  background: var(--bg-zone);
-  border: 2px solid rgba(255, 215, 0, 0.2);
-  border-radius: 20px;
-  padding: 4px;
   display: grid;
-  grid-template-columns: auto 1fr auto minmax(150px, 200px);
-  align-items: center;
-  gap: 4px;
-  position: relative;
-  min-height: 0;
-}
-
-.battle-log-integrated {
-  height: 100%;
-  max-height: 380px; /* Match active card height roughly */
-  display: flex;
-}
-
-.integrated-zones-left, .integrated-zones-right {
-  display: flex;
-  flex-direction: column;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto 1fr 1fr auto;
   gap: 10px;
-  height: 100%;
-  justify-content: center;
-}
-
-.zone-stack.mini {
-  padding: 8px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  backdrop-filter: blur(5px);
-  transition: transform 0.2s ease;
-}
-
-.zone-stack.mini:hover {
-  transform: scale(1.05);
-  border-color: rgba(255, 255, 255, 0.3);
-}
-
-.card-back.mini {
-  width: 44px;
-  height: 62px;
-  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-  border: 1px solid rgba(255,255,255,0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.5);
-}
-
-.energy-pile.mini {
-  display: flex;
-  gap: -4px;
-}
-
-.mini-icon {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  font-size: 0.6rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.mini-icon.fire { background: var(--fire-primary); }
-.mini-icon.water { background: var(--water-primary); }
-.mini-icon.grass { background: var(--grass-primary); }
-.mini-icon.electric { background: var(--electric-primary); }
-
-.prizes-stack.mini {
-  flex-direction: row;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.prize-card.mini {
-  width: 28px;
-  height: 20px;
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  border-radius: 3px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.4);
-}
-
-.discard-top.mini {
-  width: 44px;
-  height: 62px;
-  background: #222;
-  border: 1px dashed rgba(255,255,255,0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  color: #888;
-}
-
-.empty-active {
-  color: var(--text-secondary);
-  font-style: italic;
-  font-size: 0.9rem;
-}
-
-.center-play-column {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: center;
-  min-height: 0;
-  flex: 1;
-  justify-content: center;
-}
-
-.active-card-only-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-height: 0;
-  flex: 1;
-  justify-content: center;
-}
-
-/* Integrated Bench */
-.bench-zone.integrated {
-  background: rgba(0,0,0,0.3);
-  width: 100%;
-  border-radius: 12px;
-  padding: 4px;
-  border: 1px solid rgba(255,255,255,0.05);
-  margin-top: 4px;
-}
-
-.bench-slots.mini {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-  margin-top: 4px;
-}
-
-.bench-slot.mini {
-  width: 80px;
-  height: 50px;
-  border-radius: 6px;
+  padding: 10px;
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
+  height: 100dvh;
+  height: 100vh;
+  background: var(--cb-bg);
+  color: var(--cb-text);
+  grid-template-areas:
+    "header"
+    "opponent"
+    "player"
+    "hand";
+  position: relative;
   overflow: hidden;
 }
 
-.bench-card.mini {
-  width: 100%;
-  height: 100%;
-  background: #222;
-  display: flex;
-  align-items: center;
-  padding: 4px;
-  gap: 6px;
-  border: 1px solid rgba(255,255,255,0.1);
+/* Soft background dots */
+.bento::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(245,130,174,0.06) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
 }
 
-.bench-card.mini.fire { border-color: var(--fire-primary); }
-.bench-card.mini.water { border-color: var(--water-primary); }
-.bench-card.mini.grass { border-color: var(--grass-primary); }
-.bench-card.mini.electric { border-color: var(--electric-primary); }
-
-.bench-pokemon-image.mini {
-  width: 24px;
-  height: 24px;
-  object-fit: contain;
+/* Tablet & up */
+@media (min-width: 720px) {
+  .bento {
+    grid-template-columns: 1fr 200px;
+    grid-template-rows: auto 1fr 1fr auto;
+    grid-template-areas:
+      "header header"
+      "opponent opp-bench"
+      "player player-bench"
+      "hand hand";
+  }
 }
 
-.bench-info-mini {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+.bento-box {
+  background: var(--cb-bg-card);
+  border-radius: 18px;
+  padding: 12px;
+  box-shadow:
+    0 1px 3px var(--cb-shadow),
+    0 4px 12px var(--cb-shadow);
+  border: 1px solid var(--cb-border);
+  position: relative;
+  overflow: hidden;
   min-width: 0;
 }
 
-/* Responsive Adjustments */
-@media (max-width: 768px) {
-  .active-zone {
-    grid-template-columns: auto 1fr auto;
-    grid-template-rows: 1fr;
-    padding: 8px 4px;
-    gap: 4px;
-  }
 
-  .integrated-zones-left, 
-  .integrated-zones-right {
-    flex-direction: column;
-    justify-content: center;
-    height: 100%;
-    width: auto;
-    order: unset;
-    padding: 0;
-    border: none;
-  }
-
-  .active-card-only-container {
-    padding: 0 4px;
-  }
-
-  .active-card {
-    width: 120px;
-    padding: 4px;
-    gap: 2px;
-  }
-  
-  .card-art { height: 60px; }
-  .card-name { font-size: 0.75rem; }
-  .attack-button { padding: 3px; font-size: 0.65rem; }
-
-  .bench-zone.integrated {
-    padding: 4px;
-  }
-
-  .bench-slot.mini {
-    width: 50px;
-    height: 100px;
-  }
-
-  .bench-pokemon-image.mini {
-    width: 18px;
-    height: 18px;
-  }
-
-  .hand-section {
-    padding: 4px;
-  }
-
-  .hand-card {
-    min-width: 75px;
-    height: 100px;
-  }
-}
-
-@media (max-width: 480px) {
-  .pi-center { width: 100%; order: 3; text-align: center; }
-  .pi-left { order: 1; }
-  .pi-right { order: 2; }
-  
-  .active-card {
-    max-width: 220px;
-  }
-  
-  .hand-card {
-    min-width: 80px;
-    height: 225px;
-    font-size: 0.8rem;
-  }
-}
-
-.bench-placeholder.mini {
-  width: 100%;
-  height: 100%;
-  background: rgba(255,255,255,0.02);
-  border: 1px dashed rgba(255,255,255,0.1);
+/* ---------- Header ---------- */
+.header {
+  grid-area: header;
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: #444;
-}
-
-.active-card-container {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  position: relative;
-}
-
-.active-card {
-  width: 180px;
-  max-width: 100%;
-  background: var(--bg-card);
-  border-radius: 12px;
-  padding: 8px;
-  border: 3px solid var(--border-color);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.active-card.fire { border-color: var(--fire-primary); }
-.active-card.water { border-color: var(--water-primary); }
-.active-card.grass { border-color: var(--grass-primary); }
-.active-card.electric { border-color: var(--electric-primary); }
-
-.card-top {
-  display: flex;
   justify-content: space-between;
-  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--cb-bg-card);
+  border-radius: 14px;
+  border: 1px solid var(--cb-border);
+  box-shadow: 0 1px 3px var(--cb-shadow);
+  flex-wrap: wrap;
 }
 
-.card-name-group {
+.game-title {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.card-name {
-  font-size: 1.1rem;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.card-stage-label {
-  font-size: 0.6rem;
-  text-transform: uppercase;
+  align-items: center;
+  gap: 8px;
   font-weight: 800;
-  color: var(--text-secondary);
-  background: rgba(0,0,0,0.2);
-  padding: 1px 6px;
-  border-radius: 4px;
-  margin-top: 2px;
-}
-
-.card-hp {
   font-size: 0.9rem;
-  font-weight: 600;
+  color: var(--cb-text);
 }
 
-.card-hp.hp-high { color: #4ade80; }
-.card-hp.hp-medium { color: #fbbf24; }
-.card-hp.hp-low { color: #ef4444; }
+.title-emoji { font-size: 1.2rem; }
+.title-text { color: var(--cb-text); }
 
-.card-art {
-  height: 120px;
-  background: rgba(0,0,0,0.2);
-  border-radius: 8px;
-  display: flex;
+.turn-pill {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  flex-shrink: 0; /* Never shrink the art */
-}
-
-.pokemon-image {
-  max-height: 100%;
-  max-width: 100%;
-  object-fit: contain;
-  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
-}
-
-.pokemon-emoji {
-  font-size: 2.5rem;
-}
-
-.hp-bar-large {
-  height: 8px;
-  background: rgba(255,255,255,0.1);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.hp-fill {
-  height: 100%;
-  transition: width 0.3s ease;
-}
-
-.hp-fill.hp-high { background: #4ade80; }
-.hp-fill.hp-medium { background: #fbbf24; }
-.hp-fill.hp-low { background: #ef4444; }
-
-.attacks-section {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-height: 40px; /* Reserve space for at least 1-2 buttons */
-}
-
-.attack-button {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  background: rgba(255,255,255,0.1);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
+  gap: 6px;
+  background: var(--cb-accent);
   color: white;
-  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(245,130,174,0.4);
+  white-space: nowrap;
+}
+
+.scoreline {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.scoreline-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--cb-text);
+}
+
+.sl-label {
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.score-dots { display: flex; gap: 3px; }
+
+.score-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--cb-border);
+  transition: background 0.3s;
+}
+
+.score-dot.filled.you { background: var(--cb-water); }
+.score-dot.filled.opp { background: var(--cb-fire); }
+
+.pi-mute {
+  background: var(--cb-bg-soft);
+  border: 1px solid var(--cb-border);
+  color: var(--cb-text);
+  padding: 5px 9px;
+  border-radius: 14px;
   font-size: 0.85rem;
-  transition: all 0.2s ease;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.attack-button:hover:not(.disabled) {
-  background: rgba(255,255,255,0.2);
+.pi-mute:hover { background: var(--cb-border); }
+
+.end-turn-cozy {
+  background: var(--cb-plum);
+  color: white;
+  border: none;
+  padding: 7px 14px;
+  border-radius: 16px;
+  font-weight: 700;
+  font-size: 0.75rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(94,84,142,0.4);
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.end-turn-cozy:hover:not(:disabled) {
   transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(94,84,142,0.5);
 }
 
-.attack-button.disabled {
-  opacity: 0.4;
+.end-turn-cozy:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
-.attack-name { font-weight: 600; }
-.attack-cost { color: var(--electric-primary); }
-.attack-damage { color: #ef4444; font-weight: 700; }
+.end-turn-cozy:active:not(:disabled) { transform: translateY(0); }
 
-.attached-energy {
+
+/* ---------- Opponent Box ---------- */
+.opponent-box {
+  grid-area: opponent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: linear-gradient(135deg, #fff5f5 0%, #ffe8e8 100%);
+  border-color: rgba(251,113,133,0.3);
+  position: relative;
+  min-height: 150px;
+}
+
+@media (min-width: 720px) {
+  .opponent-box {
+    gap: 6px;
+    min-height: 200px;
+  }
+}
+
+.opp-tag {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--cb-fire);
+  background: rgba(251,113,133,0.12);
+  padding: 4px 10px;
+  border-radius: 12px;
+  z-index: 2;
+}
+
+/* Mobile inline opponent bench in top-right */
+.opp-inline-bench {
+  position: absolute;
+  top: 10px;
+  right: 12px;
   display: flex;
   gap: 4px;
-  justify-content: center;
+  z-index: 2;
 }
 
-.attached-icon {
-  font-size: 1rem;
+@media (min-width: 720px) {
+  .opp-inline-bench { display: none; }
 }
 
-/* Bench Zone */
-.bench-zone {
-  background: var(--bg-zone);
-  border: 2px dashed var(--border-color);
-  border-radius: 12px;
-  padding: 10px;
-}
-
-.bench-slots {
-  display: flex;
-  gap: 6px;
-  justify-content: center;
-  margin-top: 4px;
-}
-
-.bench-slot {
-  width: 70px;
-  height: 98px;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  flex-shrink: 0;
-}
-
-.bench-placeholder {
-  width: 100%;
-  height: 100%;
-  border: 2px dashed rgba(255,255,255,0.15);
+.inline-bench-mini {
+  width: 32px;
+  height: 32px;
   border-radius: 8px;
+  background: white;
+  border: 1px solid rgba(251,113,133,0.3);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-secondary);
-  font-size: 0.75rem;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s;
 }
 
-.bench-slot:hover .active-card.bench-version {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+.inline-bench-mini:hover {
+  transform: scale(1.1);
 }
 
-.active-card.bench-version {
-  max-width: none;
-  width: 100%;
+.inline-bench-mini img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+}
+
+.opp-poke-img {
+  width: 90px;
+  height: 90px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 16px rgba(251,113,133,0.3));
+  transform: scaleX(-1);
+}
+
+@media (min-width: 720px) {
+  .opp-poke-img { width: 140px; height: 140px; }
+}
+
+.opp-poke-name {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--cb-text);
+}
+
+.opp-poke-hp {
+  width: min(80%, 240px);
+}
+
+.opp-resources-mini {
+  display: flex;
+  gap: 12px;
+  font-size: 0.7rem;
+  color: var(--cb-text-soft);
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.empty-active-cozy {
+  color: var(--cb-text-soft);
+  font-style: italic;
+  font-size: 0.85rem;
+  padding: 30px 0;
+}
+
+
+/* HP bars */
+.hp-track-cozy {
+  height: 8px;
+  background: rgba(45,38,32,0.06);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.hp-fill-cozy {
   height: 100%;
-  padding: 6px;
-  gap: 2px;
-  border-width: 2px;
-  box-shadow: none;
-  border-radius: 10px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--cb-fire), #fda4af);
+  transition: width 0.3s;
 }
 
-.bench-version .card-name { font-size: 0.65rem; }
-.bench-version .card-hp { font-size: 0.55rem; }
-.bench-version .card-art { height: 45px; background: rgba(0,0,0,0.1); flex-shrink: 0; }
-.bench-version .hp-bar-large { height: 3px; }
+.hp-fill-cozy.water {
+  background: linear-gradient(90deg, var(--cb-water), #93c5fd);
+}
 
-.hand-section {
-  background: rgba(0,0,0,0.6);
-  border-radius: 16px;
-  padding: 8px 12px;
-  border: 2px solid rgba(255,255,255,0.05);
-  backdrop-filter: blur(10px);
-  flex-shrink: 0; /* Keep hand size stable */
+.hp-fill-cozy.hp-high { background: linear-gradient(90deg, #4ade80, #86efac); }
+.hp-fill-cozy.hp-medium { background: linear-gradient(90deg, #fbbf24, #fde68a); }
+.hp-fill-cozy.hp-low { background: linear-gradient(90deg, #ef4444, #fda4af); }
+
+.hp-text-cozy {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: var(--cb-text-soft);
+  font-weight: 600;
+}
+
+/* Status effects */
+.status-effects-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.status-effects-row.left { justify-content: flex-start; }
+
+.status-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid var(--cb-border);
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.status-badge.poisoned { color: #a855f7; border-color: rgba(168,85,247,0.3); }
+.status-badge.burned { color: var(--cb-fire); border-color: rgba(251,113,133,0.3); }
+.status-badge.paralyzed { color: #ca8a04; border-color: rgba(202,138,4,0.3); }
+.status-badge.asleep { color: var(--cb-text-soft); }
+
+/* ---------- Bench Boxes (tablet+ only) ---------- */
+.opp-bench-box,
+.player-bench-box {
+  display: none;
+}
+
+@media (min-width: 720px) {
+  .opp-bench-box {
+    grid-area: opp-bench;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .player-bench-box {
+    grid-area: player-bench;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+}
+
+.bench-title {
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: var(--cb-text-soft);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-align: center;
+  margin-bottom: 2px;
+}
+
+.bench-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  flex: 1;
+}
+
+.bench-tile {
+  background: var(--cb-bg-soft);
+  border-radius: 10px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 70px;
+  border: 2px solid transparent;
+}
+
+.bench-tile:hover:not(.empty) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px var(--cb-shadow);
+}
+
+.bench-tile.evo-target {
+  border-color: var(--cb-accent);
+  animation: pulse-cozy 1.5s infinite;
+}
+
+@keyframes pulse-cozy {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245,130,174,0.5); }
+  50% { box-shadow: 0 0 0 6px rgba(245,130,174,0); }
+}
+
+.bench-tile img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+
+.bench-tile .bt-name {
+  font-size: 0.55rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.1;
+  color: var(--cb-text);
+}
+
+.bench-tile .bt-hp {
+  font-size: 0.5rem;
+  color: var(--cb-text-soft);
+}
+
+.bench-tile.empty {
+  border: 2px dashed var(--cb-border);
+  background: transparent;
+  color: var(--cb-text-soft);
+}
+
+.bench-tile.empty span {
+  font-size: 1.2rem;
+}
+
+
+/* ---------- Player Box ---------- */
+.player-box {
+  grid-area: player;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: linear-gradient(135deg, #f0f7ff 0%, #dbeafe 100%);
+  border-color: rgba(96,165,250,0.3);
+  position: relative;
+  min-height: 170px;
+}
+
+@media (min-width: 720px) {
+  .player-box {
+    gap: 8px;
+    min-height: 220px;
+  }
+}
+
+.you-tag {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--cb-water);
+  background: rgba(96,165,250,0.12);
+  padding: 4px 10px;
+  border-radius: 12px;
+  z-index: 2;
+}
+
+.player-inline-bench {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  display: flex;
+  gap: 4px;
+  z-index: 2;
+}
+
+@media (min-width: 720px) {
+  .player-inline-bench { display: none; }
+}
+
+.player-inline-bench .inline-bench-mini {
+  border-color: rgba(96,165,250,0.3);
+}
+
+.player-inline-bench .inline-bench-mini.evo-target {
+  border-color: var(--cb-accent);
+  animation: pulse-cozy 1.5s infinite;
+}
+
+.player-active-area {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  width: 100%;
+}
+
+@media (min-width: 720px) {
+  .player-active-area {
+    gap: 16px;
+    padding: 12px;
+  }
+}
+
+.player-poke-img {
+  width: 100px;
+  height: 100px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 16px rgba(96,165,250,0.3));
+  flex-shrink: 0;
+}
+
+@media (min-width: 720px) {
+  .player-poke-img { width: 130px; height: 130px; }
+}
+
+.player-poke-info {
+  flex: 1;
+  width: 100%;
+  max-width: 380px;
+  min-width: 0;
+}
+
+.player-poke-name {
+  font-size: 1rem;
+  font-weight: 800;
+  text-align: left;
+  color: var(--cb-text);
+}
+
+@media (min-width: 720px) {
+  .player-poke-name {
+    text-align: left;
+    font-size: 1.15rem;
+  }
+}
+
+.player-poke-stage {
+  font-size: 0.6rem;
+  color: var(--cb-text-soft);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+  text-align: left;
+}
+
+@media (min-width: 720px) {
+  .player-poke-stage { text-align: left; margin-bottom: 6px; }
+}
+
+.attached-energy-row {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.energy-pip {
+  font-size: 0.85rem;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--cb-border);
+}
+
+.you-resources-mini {
+  display: flex;
+  gap: 12px;
+  font-size: 0.7rem;
+  color: var(--cb-text-soft);
+  font-weight: 600;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+
+/* Attack buttons */
+.attack-stack-cozy {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+@media (min-width: 720px) {
+  .attack-stack-cozy {
+    margin-top: 10px;
+    gap: 6px;
+  }
+}
+
+.cozy-attack {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid rgba(96,165,250,0.3);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.7rem;
+  transition: all 0.2s;
+  color: var(--cb-text);
+  gap: 6px;
+  font-family: inherit;
+}
+
+@media (min-width: 720px) {
+  .cozy-attack {
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    gap: 8px;
+  }
+}
+
+.cozy-attack:hover:not(.disabled) {
+  background: white;
+  border-color: var(--cb-water);
+  transform: translateX(2px);
+  box-shadow: 0 4px 12px rgba(96,165,250,0.15);
+}
+
+.cozy-attack.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.cozy-attack .ck-name { font-weight: 700; }
+.cozy-attack .ck-cost { color: #ca8a04; font-size: 0.7rem; }
+.cozy-attack .ck-dmg { color: var(--cb-fire); font-weight: 800; }
+
+/* ---------- Hand Box ---------- */
+.hand-box {
+  grid-area: hand;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: linear-gradient(135deg, #fffaf0 0%, #fef0d4 100%);
+  padding: 12px;
 }
 
 .hand-header {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 4px;
-}
-
-.hand-label {
-  font-size: 0.9rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  color: #667eea;
-}
-
-.hand-count {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-}
-
-.hand-cards {
-  display: flex;
   gap: 8px;
-  padding: 4px 4px 12px;
-  overflow-x: auto;
-  perspective: 1000px;
 }
 
-.hand-card {
-  min-width: 120px;
-  height: 200px; /* Increased from 168px to fit 2 attacks + fixed art */
-  border-radius: 16px;
-  cursor: pointer;
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  flex-shrink: 0;
-  position: relative;
-}
-
-.hand-card:hover {
-  transform: translateY(-30px) rotateX(10deg);
-  border-color: #667eea;
-  box-shadow: 0 15px 30px rgba(102, 126, 234, 0.4);
-}
-
-/* Unified Hand Version */
-.active-card.hand-version {
-  max-width: none;
-  width: 100%;
-  height: 100%;
-  padding: 8px;
-  gap: 6px;
-  border-width: 2px;
-  box-shadow: none;
-  background: var(--bg-card);
-}
-
-.hand-version .card-name { font-size: 0.85rem; }
-.hand-version .card-hp { font-size: 0.75rem; }
-.hand-version .card-art { height: 80px; background: rgba(255,255,255,0.03); flex-shrink: 0; }
-.hand-version .hp-bar-large { height: 6px; }
-.hand-version .attacks-section { min-height: 50px; }
-.hand-version .attack-button.mini { 
-  padding: 4px 8px; 
-  font-size: 0.65rem; 
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 4px;
-}
-
-.hc-energy-card, .hc-trainer-card {
-  width: 100%;
-  height: 100%;
-  background: var(--bg-card);
-  border: 2px solid rgba(255,255,255,0.1);
-  border-radius: 16px;
+.hand-title {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--cb-text);
+}
+
+.hand-emoji { font-size: 1rem; }
+
+.hand-meta {
+  font-size: 0.7rem;
+  color: var(--cb-text-soft);
+  font-weight: 600;
+}
+
+.hand-row {
+  display: flex;
   gap: 10px;
-  box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+  overflow-x: auto;
+  overflow-y: visible;
+  padding: 6px 4px 16px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--cb-border) transparent;
 }
 
-.hc-energy-card.fire { border-color: var(--fire-primary); }
-.hc-energy-card.water { border-color: var(--water-primary); }
-.hc-energy-card.grass { border-color: var(--grass-primary); }
-.hc-energy-card.electric { border-color: var(--electric-primary); }
+.hand-row::-webkit-scrollbar { height: 6px; }
+.hand-row::-webkit-scrollbar-thumb { background: var(--cb-border); border-radius: 3px; }
+.hand-row::-webkit-scrollbar-track { background: transparent; }
 
-.hc-trainer-card { border-color: #94a3b8; }
 
-.hc-energy-icon { font-size: 3rem; }
-.hc-energy-text { font-size: 0.9rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
-
-.hc-trainer-icon { font-size: 2.5rem; }
-.hc-trainer { font-size: 0.8rem; font-weight: 700; text-align: center; }
-
-.hc-stage {
-  position: absolute;
-  top: 40px;
-  right: 5px;
-  font-size: 0.5rem;
-  font-weight: 800;
-  background: #fbbf24;
-  color: #000;
-  padding: 1px 4px;
-  border-radius: 4px;
-  z-index: 1;
-}
-
-/* Status Effects */
-.status-effects-overlay {
-  position: absolute;
-  top: 8px;
-  left: 8px;
+/* Hand cards */
+.cozy-card {
+  flex-shrink: 0;
+  width: 110px;
+  min-height: 160px;
+  background: white;
+  border: 2px solid var(--cb-border);
+  border-radius: 14px;
+  padding: 10px 8px;
+  cursor: pointer;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.25s ease,
+              border-color 0.2s ease;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  z-index: 10;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+  scroll-snap-align: start;
 }
 
-.status-badge {
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 0.65rem;
+.cozy-card:hover {
+  transform: translateY(-10px) rotate(-1.5deg);
+  box-shadow: 0 14px 28px var(--cb-shadow-lg);
+  border-color: var(--cb-accent);
+}
+
+.cozy-card:active {
+  transform: translateY(-4px) scale(0.98);
+}
+
+.cozy-card.pokemon { border-color: rgba(96,165,250,0.4); background: linear-gradient(180deg, white, #f0f7ff); }
+.cozy-card.energy { border-color: rgba(253,224,71,0.55); background: linear-gradient(180deg, white, #fefce8); }
+.cozy-card.item, .cozy-card.supporter { border-color: rgba(245,130,174,0.4); background: linear-gradient(180deg, white, #fdf2f8); }
+
+.cozy-card.pending-source {
+  border-color: var(--cb-accent);
+  box-shadow: 0 0 0 3px rgba(245,130,174,0.3);
+  animation: pulse-cozy 1.2s infinite;
+}
+
+.cozy-card .cz-tag {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 0.6rem;
   font-weight: 800;
-  text-transform: uppercase;
   display: flex;
   align-items: center;
-  gap: 4px;
-  color: white;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255,255,255,0.2);
-}
-
-.status-badge.poisoned { background: rgba(168, 85, 247, 0.8); }
-.status-badge.burned { background: rgba(239, 68, 68, 0.8); }
-.status-badge.paralyzed { background: rgba(234, 179, 8, 0.8); animation: pulseStatus 1s infinite alternate; }
-.status-badge.asleep { background: rgba(59, 130, 246, 0.8); animation: pulseStatus 2s infinite alternate; }
-
-@keyframes pulseStatus {
-  from { opacity: 0.7; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
-}
-
-.status-effects-overlay.mini {
-  top: 2px;
-  left: 2px;
-  gap: 2px;
-}
-
-.status-badge.mini {
-  padding: 1px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
   justify-content: center;
+  color: white;
 }
 
-/* Evolution Banner */
+.cozy-card.pokemon .cz-tag { background: var(--cb-water); }
+.cozy-card.energy .cz-tag { background: var(--cb-electric); color: var(--cb-text); }
+.cozy-card.item .cz-tag,
+.cozy-card.supporter .cz-tag { background: var(--cb-accent); }
+
+.cozy-card .cz-art {
+  width: 100%;
+  height: 80px;
+  background: rgba(45,38,32,0.04);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.cozy-card .cz-art img {
+  max-height: 76px;
+  max-width: 90%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(45,38,32,0.15));
+}
+
+.cozy-card .cz-art .cz-emoji-only {
+  font-size: 2.6rem;
+}
+
+.cozy-card .cz-name {
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-align: center;
+  line-height: 1.15;
+  color: var(--cb-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.cozy-card .cz-meta {
+  font-size: 0.55rem;
+  color: var(--cb-text-soft);
+  font-weight: 600;
+  text-align: center;
+  text-transform: capitalize;
+}
+
+
+/* ---------- Evolution Banner ---------- */
 .evolution-banner {
   position: absolute;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
-  color: #000;
-  padding: 10px 24px;
-  border-radius: 30px;
-  z-index: 1000;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-  border: 2px solid white;
-}
-
-.banner-content {
+  top: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(135deg, var(--cb-accent), var(--cb-plum));
+  color: white;
+  padding: 8px 16px;
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 16px;
+  z-index: 50;
   font-weight: 700;
+  font-size: 0.85rem;
+  box-shadow: 0 4px 12px rgba(245,130,174,0.3);
 }
 
-.pulse-text {
-  animation: textPulse 1.5s infinite;
-}
+.evolution-banner .pulse-text { animation: pulse-text 1.5s infinite; }
 
-@keyframes textPulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.8; transform: scale(1.02); }
+@keyframes pulse-text {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
 .btn-cancel-evo {
-  background: #ef4444;
+  background: rgba(255,255,255,0.25);
+  border: 1px solid rgba(255,255,255,0.4);
   color: white;
-  border: none;
   padding: 4px 12px;
-  border-radius: 15px;
-  font-size: 0.8rem;
-  cursor: pointer;
-  font-weight: 700;
-}
-
-/* Evolution Target Highlighting */
-.evolution-mode .active-card, 
-.evolution-mode .bench-card {
-  transition: all 0.3s ease;
-}
-
-.evo-target {
-  position: relative;
-}
-
-.evo-target::after {
-  content: '';
-  position: absolute;
-  inset: -4px;
-  border: 4px dashed #fbbf24;
   border-radius: 12px;
-  animation: borderDash 2s linear infinite;
-  pointer-events: none;
-}
-
-@keyframes borderDash {
-  from { stroke-dashoffset: 0; }
-  to { stroke-dashoffset: 20; }
-}
-
-.active-board.evolution-mode .active-card:hover,
-.active-board.evolution-mode .bench-card:hover {
-  transform: scale(1.05);
-  box-shadow: 0 0 20px #fbbf24;
+  font-weight: 700;
+  font-size: 0.75rem;
   cursor: pointer;
+  transition: all 0.2s;
 }
 
-/* Stage Labels */
-.hc-stage {
-  font-size: 0.5rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  background: rgba(0,0,0,0.3);
-  padding: 1px 4px;
-  border-radius: 4px;
-  margin-bottom: -4px;
+.btn-cancel-evo:hover {
+  background: rgba(255,255,255,0.4);
 }
-/* Responsive Battle Log */
-@media (max-width: 900px) {
-  .battle-log-integrated {
-    display: none;
+
+.bento.evolution-mode {
+  padding-top: 50px;
+}
+
+/* ---------- Drag and Drop ---------- */
+.cozy-card[draggable="true"] {
+  -webkit-user-drag: element;
+}
+
+.cozy-card.dragging {
+  opacity: 0.4;
+  transform: scale(0.95);
+  cursor: grabbing;
+}
+
+.bento-box.drag-target {
+  border-color: var(--cb-accent) !important;
+  box-shadow: 0 0 0 4px rgba(245,130,174,0.3), 0 8px 20px rgba(45,38,32,0.15) !important;
+  transform: scale(1.01);
+  transition: all 0.15s ease;
+}
+
+.bento-box.drag-target::after {
+  content: "✨ Drop here";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--cb-accent);
+  background: rgba(255,255,255,0.5);
+  backdrop-filter: blur(2px);
+  border-radius: 18px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* ---------- Combat VFX (preserve existing classes) ---------- */
+.combat-vfx-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+/* Shake the entire box on hit */
+.opponent-box,
+.player-box {
+  transition: transform 0.1s;
+}
+
+.opponent-box:has(.combat-vfx-overlay.shake),
+.player-box:has(.combat-vfx-overlay.shake) {
+  animation: hit-shake 0.4s ease-in-out;
+}
+
+@keyframes hit-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px) rotate(-0.5deg); }
+  40% { transform: translateX(6px) rotate(0.5deg); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+/* ---------- Floating Damage Numbers ---------- */
+.damage-numbers-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.damage-number {
+  position: absolute;
+  font-size: 2rem;
+  font-weight: 900;
+  color: white;
+  text-shadow:
+    0 2px 0 #2d2620,
+    0 4px 8px rgba(45,38,32,0.5),
+    0 0 12px currentColor;
+  pointer-events: none;
+  animation: dmg-float 1.4s cubic-bezier(0.2, 0.6, 0.4, 1) forwards;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.damage-number.damage {
+  color: #fb7185;
+}
+
+.damage-number.heal {
+  color: #4ade80;
+}
+
+@keyframes dmg-float {
+  0% {
+    transform: scale(0.4) translateY(0);
+    opacity: 0;
   }
-  .active-zone {
-    grid-template-columns: auto 1fr auto;
+  15% {
+    transform: scale(1.4) translateY(-8px);
+    opacity: 1;
+  }
+  30% {
+    transform: scale(1) translateY(-16px);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.9) translateY(-80px);
+    opacity: 0;
+  }
+}
+
+/* Mobile small breakpoint refinements */
+@media (max-width: 480px) {
+  .bento {
+    gap: 6px;
+    padding: 6px;
+  }
+
+  .header {
+    padding: 6px 10px;
+    gap: 6px;
+  }
+
+  .game-title { font-size: 0.75rem; }
+  .title-emoji { font-size: 1rem; }
+  .turn-pill { font-size: 0.6rem; padding: 4px 8px; }
+  .scoreline { gap: 6px; }
+  .sl-label { display: none; }
+  .pi-mute { padding: 4px 7px; font-size: 0.75rem; }
+  .end-turn-cozy { padding: 5px 10px; font-size: 0.7rem; }
+
+  .opponent-box,
+  .player-box {
+    padding: 8px;
+    border-radius: 14px;
+  }
+
+  .opponent-box { min-height: 130px; gap: 2px; }
+  .player-box { min-height: 150px; }
+
+  .opp-tag, .you-tag {
+    font-size: 0.6rem;
+    padding: 3px 8px;
+    top: 6px;
+    left: 8px;
+  }
+
+  .opp-inline-bench, .player-inline-bench {
+    top: 6px;
+    right: 8px;
+    gap: 3px;
+  }
+
+  .inline-bench-mini {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+  }
+
+  .inline-bench-mini img {
+    width: 22px;
+    height: 22px;
+  }
+
+  .opp-poke-img { width: 72px; height: 72px; }
+  .player-poke-img { width: 84px; height: 84px; }
+
+  .opp-poke-name { font-size: 0.85rem; }
+  .player-poke-name { font-size: 0.9rem; }
+  .player-poke-stage { font-size: 0.55rem; margin-bottom: 2px; }
+
+  .hp-text-cozy { font-size: 0.6rem; }
+  .hp-track-cozy { height: 6px; }
+
+  .player-active-area {
+    padding: 4px 8px;
+    gap: 8px;
+  }
+
+  .opp-poke-hp { width: 90%; }
+
+  .cozy-attack {
+    padding: 5px 8px;
+    font-size: 0.65rem;
+    border-radius: 7px;
+  }
+
+  .cozy-attack .ck-cost { font-size: 0.6rem; }
+
+  /* Hand */
+  .hand-box { padding: 8px; }
+
+  .hand-title { font-size: 0.75rem; }
+  .hand-meta { font-size: 0.6rem; }
+
+  .cozy-card {
+    width: 88px;
+    min-height: 138px;
+    padding: 8px 6px;
+    border-radius: 12px;
+  }
+
+  .cozy-card .cz-art {
+    height: 60px;
+    border-radius: 8px;
+  }
+
+  .cozy-card .cz-art img { max-height: 56px; }
+  .cozy-card .cz-art .cz-emoji-only { font-size: 2rem; }
+
+  .cozy-card .cz-name { font-size: 0.65rem; }
+  .cozy-card .cz-meta { font-size: 0.5rem; }
+
+  .cozy-card .cz-tag {
+    width: 16px;
+    height: 16px;
+    font-size: 0.55rem;
+    top: 5px;
+    right: 5px;
+  }
+
+  .you-resources-mini, .opp-resources-mini {
+    gap: 8px;
+    font-size: 0.6rem;
+    margin-top: 2px;
+  }
+
+  /* Energy pip slimmer */
+  .energy-pip {
+    font-size: 0.7rem;
+    width: 18px;
+    height: 18px;
   }
 }
 </style>

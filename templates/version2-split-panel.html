@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pokémon Card Game – Split Panel (V2)</title>
+  <style>
+    :root {
+      --fire: #ef4444;
+      --water: #3b82f6;
+      --grass: #22c55e;
+      --electric: #eab308;
+      --bg-dark: #0a0a14;
+      --bg-card: #16162a;
+      --border: rgba(255,255,255,0.08);
+      --text-primary: #fff;
+      --text-secondary: rgba(255,255,255,0.45);
+      --accent: #8b5cf6;
+      --glow: rgba(139,92,246,0.3);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ===== LAYOUT: Split-panel with sidebar =====
+       Left sidebar has game info/log, main area is the battlefield,
+       hand is a floating dock at the bottom.
+    */
+
+    .game-layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      height: 100vh;
+    }
+
+    /* --- Sidebar --- */
+    .sidebar {
+      background: rgba(0,0,0,0.6);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      gap: 16px;
+      overflow-y: auto;
+    }
+
+    .sidebar-header {
+      text-align: center;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-header h2 {
+      font-size: 1rem;
+      background: linear-gradient(135deg, var(--accent), #ec4899);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .turn-info {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 14px;
+      border: 1px solid var(--border);
+    }
+
+    .turn-info .turn-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .turn-info .turn-value {
+      font-size: 1.4rem;
+      font-weight: 800;
+    }
+
+    .score-section {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .score-card {
+      flex: 1;
+      background: var(--bg-card);
+      border-radius: 10px;
+      padding: 12px;
+      text-align: center;
+      border: 1px solid var(--border);
+    }
+
+    .score-card .sc-label {
+      font-size: 0.6rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .score-card .sc-value {
+      font-size: 1.5rem;
+      font-weight: 900;
+    }
+
+    .score-card.you .sc-value { color: var(--water); }
+    .score-card.opp .sc-value { color: var(--fire); }
+
+    .zones-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .zone-item {
+      background: var(--bg-card);
+      border-radius: 10px;
+      padding: 10px;
+      text-align: center;
+      border: 1px solid var(--border);
+    }
+
+    .zone-item .zi-icon { font-size: 1.2rem; }
+    .zone-item .zi-count { font-size: 1rem; font-weight: 700; margin-top: 2px; }
+    .zone-item .zi-label { font-size: 0.55rem; color: var(--text-secondary); text-transform: uppercase; }
+
+    /* Battle Log */
+    .battle-log {
+      flex: 1;
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      overflow-y: auto;
+      min-height: 0;
+    }
+
+    .battle-log h3 {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .log-entry {
+      font-size: 0.72rem;
+      padding: 4px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      color: rgba(255,255,255,0.7);
+    }
+
+    .log-entry:last-child { border-bottom: none; }
+    .log-entry .log-turn { color: var(--accent); font-weight: 700; }
+
+    .end-turn-sidebar {
+      background: linear-gradient(135deg, var(--accent), #ec4899);
+      border: none;
+      color: white;
+      padding: 12px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      width: 100%;
+    }
+
+    .end-turn-sidebar:hover {
+      transform: scale(1.02);
+      box-shadow: 0 4px 20px var(--glow);
+    }
+
+    /* --- Main Battlefield --- */
+    .main-battlefield {
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .main-battlefield::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 50% 30%, rgba(139,92,246,0.04) 0%, transparent 60%),
+        radial-gradient(ellipse at 50% 70%, rgba(59,130,246,0.04) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    /* Opponent area */
+    .opponent-area {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 30px;
+      padding: 20px;
+      position: relative;
+    }
+
+    .opponent-area::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      left: 10%;
+      right: 10%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    }
+
+    .opp-card {
+      width: 160px;
+      height: 200px;
+      background: var(--bg-card);
+      border: 2px solid var(--fire);
+      border-radius: 14px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 0 20px rgba(239,68,68,0.15);
+      transform: perspective(600px) rotateX(5deg);
+    }
+
+    .opp-card .opp-name { font-size: 0.85rem; font-weight: 700; }
+    .opp-card .opp-hp { font-size: 0.7rem; color: #fbbf24; }
+
+    .opp-card img {
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+      filter: drop-shadow(0 2px 8px rgba(239,68,68,0.3));
+      transform: scaleX(-1);
+    }
+
+    .opp-card .opp-hp-bar {
+      width: 100%;
+      height: 5px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .opp-card .opp-hp-fill {
+      height: 100%;
+      width: 65%;
+      background: #fbbf24;
+    }
+
+    .opp-bench-area {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .opp-bench-card {
+      width: 50px;
+      height: 60px;
+      background: var(--bg-card);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .opp-bench-card img {
+      width: 30px;
+      height: 30px;
+      object-fit: contain;
+      opacity: 0.8;
+    }
+
+    /* Player area */
+    .player-area {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 30px;
+      padding: 20px;
+    }
+
+    .my-bench-area {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .my-bench-card {
+      width: 70px;
+      height: 90px;
+      background: var(--bg-card);
+      border: 2px solid var(--water);
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .my-bench-card:hover {
+      transform: scale(1.08);
+      box-shadow: 0 4px 16px rgba(59,130,246,0.3);
+    }
+
+    .my-bench-card img {
+      width: 36px;
+      height: 36px;
+      object-fit: contain;
+    }
+
+    .my-bench-card .mb-name { font-size: 0.55rem; font-weight: 600; }
+    .my-bench-card .mb-hp { font-size: 0.5rem; color: var(--text-secondary); }
+
+    .my-active-card {
+      width: 220px;
+      background: var(--bg-card);
+      border: 3px solid var(--water);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow:
+        0 0 30px rgba(59,130,246,0.15),
+        inset 0 0 30px rgba(59,130,246,0.03);
+      transform: perspective(600px) rotateX(-3deg);
+    }
+
+    .my-active-card .mac-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .my-active-card .mac-name { font-size: 1.2rem; font-weight: 800; }
+    .my-active-card .mac-hp { font-size: 0.85rem; color: #4ade80; font-weight: 700; }
+
+    .my-active-card .mac-image {
+      width: 100%;
+      height: 110px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 8px;
+    }
+
+    .my-active-card .mac-image img {
+      height: 95px;
+      object-fit: contain;
+      filter: drop-shadow(0 4px 12px rgba(59,130,246,0.4));
+    }
+
+    .my-active-card .mac-hp-bar {
+      height: 8px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+
+    .my-active-card .mac-hp-fill {
+      height: 100%;
+      width: 80%;
+      background: #4ade80;
+      border-radius: 4px;
+    }
+
+    .my-active-card .mac-attacks {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .mac-attack-btn {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      background: rgba(139,92,246,0.1);
+      border: 1px solid rgba(139,92,246,0.3);
+      border-radius: 10px;
+      color: white;
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: all 0.2s;
+    }
+
+    .mac-attack-btn:hover {
+      background: rgba(139,92,246,0.2);
+      transform: translateX(4px);
+      box-shadow: 0 4px 12px rgba(139,92,246,0.2);
+    }
+
+    .mac-attack-btn .ma-name { font-weight: 700; }
+    .mac-attack-btn .ma-cost { color: var(--electric); font-size: 0.75rem; }
+    .mac-attack-btn .ma-dmg { color: var(--fire); font-weight: 800; }
+
+    /* --- Floating Hand Dock --- */
+    .hand-dock {
+      position: absolute;
+      bottom: 0;
+      left: 260px;
+      right: 0;
+      background: rgba(10,10,20,0.92);
+      backdrop-filter: blur(16px);
+      border-top: 1px solid var(--border);
+      padding: 10px 20px 14px;
+      z-index: 100;
+    }
+
+    .hand-dock-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .hd-label {
+      font-size: 0.7rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--accent);
+    }
+
+    .hd-count {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+    }
+
+    .hand-dock-cards {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .dock-card {
+      min-width: 80px;
+      height: 100px;
+      background: var(--bg-card);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 8px;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .dock-card:hover {
+      transform: translateY(-24px) scale(1.08);
+      border-color: var(--accent);
+      box-shadow: 0 12px 30px var(--glow);
+      z-index: 10;
+    }
+
+    .dock-card.pokemon { border-color: rgba(59,130,246,0.5); }
+    .dock-card.energy { border-color: rgba(234,179,8,0.5); }
+    .dock-card.trainer { border-color: rgba(168,85,247,0.5); }
+
+    .dock-card .dc-icon { font-size: 1.3rem; }
+    .dock-card .dc-name { font-size: 0.6rem; font-weight: 600; text-align: center; }
+    .dock-card .dc-sub { font-size: 0.5rem; color: var(--text-secondary); }
+  </style>
+</head>
+<body>
+
+  <div class="game-layout">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h2>⚔️ Pokémon Battle</h2>
+      </div>
+
+      <div class="turn-info">
+        <div class="turn-label">Current Turn</div>
+        <div class="turn-value">Turn 5 — Your Move</div>
+      </div>
+
+      <div class="score-section">
+        <div class="score-card you">
+          <div class="sc-label">You</div>
+          <div class="sc-value">2</div>
+        </div>
+        <div class="score-card opp">
+          <div class="sc-label">Opponent</div>
+          <div class="sc-value">1</div>
+        </div>
+      </div>
+
+      <div class="zones-grid">
+        <div class="zone-item">
+          <div class="zi-icon">🃏</div>
+          <div class="zi-count">22</div>
+          <div class="zi-label">Deck</div>
+        </div>
+        <div class="zone-item">
+          <div class="zi-icon">⚡</div>
+          <div class="zi-count">4</div>
+          <div class="zi-label">Energy</div>
+        </div>
+        <div class="zone-item">
+          <div class="zi-icon">🎁</div>
+          <div class="zi-count">1</div>
+          <div class="zi-label">Prizes</div>
+        </div>
+        <div class="zone-item">
+          <div class="zi-icon">🗑️</div>
+          <div class="zi-count">5</div>
+          <div class="zi-label">Discard</div>
+        </div>
+      </div>
+
+      <div class="battle-log">
+        <h3>Battle Log</h3>
+        <div class="log-entry"><span class="log-turn">[T5]</span> You drew a card.</div>
+        <div class="log-entry"><span class="log-turn">[T4]</span> Charizard used Fire Blast! 50 DMG to Blastoise.</div>
+        <div class="log-entry"><span class="log-turn">[T4]</span> Opponent ended turn.</div>
+        <div class="log-entry"><span class="log-turn">[T3]</span> Blastoise used Hydro Pump! 60 DMG to Charizard.</div>
+        <div class="log-entry"><span class="log-turn">[T3]</span> You attached Water Energy.</div>
+        <div class="log-entry"><span class="log-turn">[T2]</span> Arcanine was knocked out!</div>
+        <div class="log-entry"><span class="log-turn">[T2]</span> Blastoise used Water Gun! 30 DMG.</div>
+        <div class="log-entry"><span class="log-turn">[T1]</span> Game started!</div>
+      </div>
+
+      <button class="end-turn-sidebar">End Turn →</button>
+    </div>
+
+    <!-- Main Battlefield -->
+    <div class="main-battlefield">
+      <!-- Opponent Area -->
+      <div class="opponent-area">
+        <div class="opp-bench-area">
+          <div class="opp-bench-card">
+            <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/59.png" alt="Arcanine" />
+          </div>
+          <div class="opp-bench-card">
+            <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/136.png" alt="Flareon" />
+          </div>
+        </div>
+        <div class="opp-card">
+          <span class="opp-name">Charizard</span>
+          <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/6.png" alt="Charizard" />
+          <span class="opp-hp">78/120 HP</span>
+          <div class="opp-hp-bar"><div class="opp-hp-fill" style="width:65%"></div></div>
+        </div>
+      </div>
+
+      <!-- Player Area -->
+      <div class="player-area">
+        <div class="my-active-card">
+          <div class="mac-header">
+            <span class="mac-name">Blastoise</span>
+            <span class="mac-hp">95/120 HP</span>
+          </div>
+          <div class="mac-image">
+            <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/9.png" alt="Blastoise" />
+          </div>
+          <div class="mac-hp-bar"><div class="mac-hp-fill" style="width:79%"></div></div>
+          <div class="mac-attacks">
+            <button class="mac-attack-btn">
+              <span class="ma-name">Hydro Pump</span>
+              <span class="ma-cost">3⚡</span>
+              <span class="ma-dmg">60 DMG</span>
+            </button>
+            <button class="mac-attack-btn">
+              <span class="ma-name">Water Gun</span>
+              <span class="ma-cost">1⚡</span>
+              <span class="ma-dmg">30 DMG</span>
+            </button>
+          </div>
+        </div>
+        <div class="my-bench-area">
+          <div class="my-bench-card">
+            <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/8.png" alt="Wartortle" />
+            <span class="mb-name">Wartortle</span>
+            <span class="mb-hp">60/60</span>
+          </div>
+          <div class="my-bench-card">
+            <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/131.png" alt="Lapras" />
+            <span class="mb-name">Lapras</span>
+            <span class="mb-hp">80/80</span>
+          </div>
+          <div class="my-bench-card" style="border-color:var(--border); opacity:0.4;">
+            <span style="color:var(--text-secondary)">+</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Floating Hand Dock -->
+      <div class="hand-dock">
+        <div class="hand-dock-header">
+          <span class="hd-label">Your Hand</span>
+          <span class="hd-count">6 cards</span>
+        </div>
+        <div class="hand-dock-cards">
+          <div class="dock-card pokemon">
+            <span class="dc-icon">💧</span>
+            <span class="dc-name">Squirtle</span>
+            <span class="dc-sub">Basic • 50HP</span>
+          </div>
+          <div class="dock-card energy">
+            <span class="dc-icon">💧</span>
+            <span class="dc-name">Water Energy</span>
+            <span class="dc-sub">Energy</span>
+          </div>
+          <div class="dock-card pokemon">
+            <span class="dc-icon">💧</span>
+            <span class="dc-name">Vaporeon</span>
+            <span class="dc-sub">Stage 1 • 90HP</span>
+          </div>
+          <div class="dock-card trainer">
+            <span class="dc-icon">📜</span>
+            <span class="dc-name">Potion</span>
+            <span class="dc-sub">Heal 30HP</span>
+          </div>
+          <div class="dock-card energy">
+            <span class="dc-icon">💧</span>
+            <span class="dc-name">Water Energy</span>
+            <span class="dc-sub">Energy</span>
+          </div>
+          <div class="dock-card pokemon">
+            <span class="dc-icon">💧</span>
+            <span class="dc-name">Gyarados</span>
+            <span class="dc-sub">Stage 1 • 100HP</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

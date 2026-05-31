@@ -83,7 +83,16 @@ export const POKEMON_DATA = {
         { id: 'p2', name: 'Gastly', hp: 50, element: 'psychic', stage: 'basic', weakness: 'psychic', resistance: 'fighting', attacks: [{ name: 'Lick', damage: 10, energyCost: 1, effect: 'paralyzed', effectChance: 0.5 }] },
         { id: 'p2-1', name: 'Haunter', hp: 80, element: 'psychic', stage: 'stage1', weakness: 'psychic', resistance: 'fighting', evolvesFrom: 'Gastly', attacks: [{ name: 'Nightmare', damage: 30, energyCost: 2, effect: 'asleep', effectChance: 0.5 }] },
         { id: 'p2-2', name: 'Gengar', hp: 120, element: 'psychic', stage: 'stage2', weakness: 'psychic', resistance: 'fighting', evolvesFrom: 'Haunter', attacks: [{ name: 'Shadow Ball', damage: 80, energyCost: 4 }] },
-        { id: 'p3', name: 'Mewtwo', hp: 130, element: 'psychic', stage: 'basic', weakness: 'psychic', resistance: 'fighting', attacks: [{ name: 'Psyburn', damage: 40, energyCost: 2 }, { name: 'Psystrike', damage: 110, energyCost: 4 }] }
+        { id: 'p3', name: 'Mewtwo', hp: 130, element: 'psychic', stage: 'basic', weakness: 'psychic', resistance: 'fighting', attacks: [{ name: 'Psyburn', damage: 40, energyCost: 2 }, { name: 'Psystrike', damage: 110, energyCost: 4 }] },
+        { id: 'p4', name: 'Drowzee', hp: 60, element: 'psychic', stage: 'basic', weakness: 'psychic', resistance: 'fighting', attacks: [{ name: 'Pound', damage: 10, energyCost: 1 }, { name: 'Hypnosis', damage: 0, energyCost: 1, effect: 'asleep', effectChance: 0.6 }] },
+        { id: 'p4-1', name: 'Hypno', hp: 100, element: 'psychic', stage: 'stage1', weakness: 'psychic', resistance: 'fighting', evolvesFrom: 'Drowzee', attacks: [{ name: 'Psychic', damage: 50, energyCost: 3 }] },
+        { id: 'p5', name: 'Ralts', hp: 40, element: 'psychic', stage: 'basic', weakness: 'psychic', resistance: 'fighting', attacks: [{ name: 'Confusion', damage: 10, energyCost: 1 }] },
+        { id: 'p5-1', name: 'Kirlia', hp: 70, element: 'psychic', stage: 'stage1', weakness: 'psychic', resistance: 'fighting', evolvesFrom: 'Ralts', attacks: [{ name: 'Magical Leaf', damage: 30, energyCost: 2 }] },
+        { id: 'p5-2', name: 'Gardevoir', hp: 120, element: 'psychic', stage: 'stage2', weakness: 'psychic', resistance: 'fighting', evolvesFrom: 'Kirlia', attacks: [{ name: 'Moonblast', damage: 80, energyCost: 3 }, { name: 'Psychic', damage: 100, energyCost: 4 }] },
+        { id: 'p6', name: 'Espeon', hp: 90, element: 'psychic', stage: 'basic', weakness: 'psychic', resistance: 'fighting', attacks: [{ name: 'Confusion', damage: 30, energyCost: 2 }, { name: 'Psybeam', damage: 60, energyCost: 3 }] },
+        { id: 'p7', name: 'Mew', hp: 80, element: 'psychic', stage: 'basic', weakness: 'psychic', resistance: 'fighting', attacks: [{ name: 'Psywave', damage: 30, energyCost: 2 }, { name: 'Ancient Power', damage: 60, energyCost: 3 }], ability: { name: 'Synchronize', description: 'Copy your opponent\'s status when played.', effect: 'passive' } },
+        { id: 'p8', name: 'Slowpoke', hp: 60, element: 'psychic', stage: 'basic', weakness: 'psychic', resistance: 'fighting', attacks: [{ name: 'Tackle', damage: 10, energyCost: 1 }, { name: 'Confusion', damage: 30, energyCost: 2 }] },
+        { id: 'p8-1', name: 'Slowbro', hp: 100, element: 'psychic', stage: 'stage1', weakness: 'psychic', resistance: 'fighting', evolvesFrom: 'Slowpoke', attacks: [{ name: 'Psyshock', damage: 60, energyCost: 3 }] }
     ],
     fighting: [
         { id: 'ft1', name: 'Machop', hp: 60, element: 'fighting', stage: 'basic', weakness: 'psychic', resistance: 'electric', attacks: [{ name: 'Kick', damage: 20, energyCost: 1 }, { name: 'Low Kick', damage: 30, energyCost: 2 }] },
@@ -91,13 +100,30 @@ export const POKEMON_DATA = {
         { id: 'ft1-2', name: 'Machamp', hp: 130, element: 'fighting', stage: 'stage2', weakness: 'psychic', resistance: 'electric', evolvesFrom: 'Machoke', attacks: [{ name: 'Submission', damage: 100, energyCost: 4 }] },
         { id: 'ft2', name: 'Mankey', hp: 50, element: 'fighting', stage: 'basic', weakness: 'psychic', resistance: 'electric', attacks: [{ name: 'Scratch', damage: 10, energyCost: 1 }, { name: 'Karate Chop', damage: 30, energyCost: 2 }] },
         { id: 'ft2-1', name: 'Primeape', hp: 90, element: 'fighting', stage: 'stage1', weakness: 'psychic', resistance: 'electric', evolvesFrom: 'Mankey', attacks: [{ name: 'Thrash', damage: 60, energyCost: 3 }] },
-        { id: 'ft3', name: 'Onix', hp: 100, element: 'fighting', stage: 'basic', weakness: 'water', resistance: 'electric', attacks: [{ name: 'Rock Throw', damage: 40, energyCost: 2 }, { name: 'Slam', damage: 60, energyCost: 3 }] }
+        { id: 'ft3', name: 'Onix', hp: 100, element: 'fighting', stage: 'basic', weakness: 'water', resistance: 'electric', attacks: [{ name: 'Rock Throw', damage: 40, energyCost: 2 }, { name: 'Slam', damage: 60, energyCost: 3 }] },
+        { id: 'ft4', name: 'Geodude', hp: 50, element: 'fighting', stage: 'basic', weakness: 'water', resistance: 'electric', attacks: [{ name: 'Tackle', damage: 10, energyCost: 1 }, { name: 'Rock Throw', damage: 20, energyCost: 2 }] },
+        { id: 'ft4-1', name: 'Graveler', hp: 80, element: 'fighting', stage: 'stage1', weakness: 'water', resistance: 'electric', evolvesFrom: 'Geodude', attacks: [{ name: 'Rock Slide', damage: 50, energyCost: 3 }] },
+        { id: 'ft4-2', name: 'Golem', hp: 130, element: 'fighting', stage: 'stage2', weakness: 'water', resistance: 'electric', evolvesFrom: 'Graveler', attacks: [{ name: 'Earthquake', damage: 100, energyCost: 4 }] },
+        { id: 'ft5', name: 'Hitmonlee', hp: 80, element: 'fighting', stage: 'basic', weakness: 'psychic', resistance: 'electric', attacks: [{ name: 'High Jump Kick', damage: 50, energyCost: 3 }, { name: 'Mega Kick', damage: 80, energyCost: 4 }] },
+        { id: 'ft6', name: 'Hitmonchan', hp: 80, element: 'fighting', stage: 'basic', weakness: 'psychic', resistance: 'electric', attacks: [{ name: 'Comet Punch', damage: 30, energyCost: 2 }, { name: 'Mega Punch', damage: 80, energyCost: 4 }] },
+        { id: 'ft7', name: 'Tyrogue', hp: 40, element: 'fighting', stage: 'basic', weakness: 'psychic', resistance: 'electric', attacks: [{ name: 'Tackle', damage: 10, energyCost: 1 }] },
+        { id: 'ft7-1', name: 'Hitmontop', hp: 90, element: 'fighting', stage: 'stage1', weakness: 'psychic', resistance: 'electric', evolvesFrom: 'Tyrogue', attacks: [{ name: 'Triple Kick', damage: 60, energyCost: 3 }] },
+        { id: 'ft8', name: 'Riolu', hp: 50, element: 'fighting', stage: 'basic', weakness: 'psychic', resistance: 'electric', attacks: [{ name: 'Quick Attack', damage: 10, energyCost: 1 }, { name: 'Force Palm', damage: 30, energyCost: 2 }] },
+        { id: 'ft8-1', name: 'Lucario', hp: 110, element: 'fighting', stage: 'stage1', weakness: 'psychic', resistance: 'electric', evolvesFrom: 'Riolu', attacks: [{ name: 'Aura Sphere', damage: 70, energyCost: 3 }, { name: 'Close Combat', damage: 100, energyCost: 4 }] },
+        { id: 'ft9', name: 'Cubone', hp: 60, element: 'fighting', stage: 'basic', weakness: 'water', resistance: 'electric', attacks: [{ name: 'Bone Club', damage: 20, energyCost: 1 }, { name: 'Bonemerang', damage: 40, energyCost: 2 }] },
+        { id: 'ft9-1', name: 'Marowak', hp: 100, element: 'fighting', stage: 'stage1', weakness: 'water', resistance: 'electric', evolvesFrom: 'Cubone', attacks: [{ name: 'Bone Rush', damage: 60, energyCost: 3 }] }
     ]
 }
 
 export const TRAINER_CARDS = [
-    { id: 't1', name: 'Potion', type: 'item', description: 'Heal 30 HP' },
-    { id: 't2', name: 'Switch', type: 'item', description: 'Switch Active with Bench' },
-    { id: 't3', name: 'Professor\'s Research', type: 'supporter', description: 'Discard hand and draw 3 cards' },
-    { id: 't4', name: 'Bill', type: 'item', description: 'Draw 2 cards' }
+    { id: 't1', name: 'Potion', type: 'item', description: 'Heal 30 HP from your active Pokémon' },
+    { id: 't2', name: 'Switch', type: 'item', description: 'Switch your active Pokémon with one on the bench' },
+    { id: 't3', name: 'Professor\'s Research', type: 'supporter', description: 'Discard your hand and draw 5 cards' },
+    { id: 't4', name: 'Bill', type: 'item', description: 'Draw 2 cards' },
+    { id: 't5', name: 'Pokéball', type: 'item', description: 'Search your deck for a basic Pokémon' },
+    { id: 't6', name: 'Energy Search', type: 'item', description: 'Search your deck for an Energy card' },
+    { id: 't7', name: 'Super Potion', type: 'item', description: 'Heal 60 HP from your active Pokémon' },
+    { id: 't8', name: 'Full Heal', type: 'item', description: 'Remove all status effects from your active Pokémon' },
+    { id: 't9', name: 'Energy Boost', type: 'item', description: 'Add 1 energy to your energy zone immediately' },
+    { id: 't10', name: 'Gust of Wind', type: 'item', description: 'Force opponent to switch their active with a benched Pokémon' }
 ]
