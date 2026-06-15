@@ -363,12 +363,13 @@
           <span class="cz-meta">
             <template v-if="card.type === 'pokemon'">
               {{ card.stage || 'basic' }} · {{ card.hp }}HP
+              <span v-if="card.evolvesFrom" class="cz-evo-hint">↑ {{ card.evolvesFrom }}</span>
             </template>
             <template v-else-if="card.type === 'energy'">
               +1⚡
             </template>
             <template v-else>
-              {{ t('elements.' + (card.element || 'fire')) }}
+              {{ card.description || card.name }}
             </template>
           </span>
         </div>
@@ -1418,6 +1419,14 @@ function handleImageError(e: Event) {
   font-weight: 600;
   text-align: center;
   text-transform: capitalize;
+}
+
+.cozy-card .cz-evo-hint {
+  display: block;
+  font-size: 0.5rem;
+  color: var(--cb-accent);
+  font-weight: 700;
+  text-transform: none;
 }
 
 

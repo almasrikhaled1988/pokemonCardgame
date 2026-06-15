@@ -34,6 +34,7 @@ export interface Card {
     resistance?: ElementType;
     statusEffects?: StatusEffect[];
     ability?: Ability;
+    turnPlayed?: number; // The turn number when this card was placed on the board
 
     // Trainer specific
     description?: string;
@@ -59,5 +60,6 @@ export interface Player {
     discardPile: Card[];
     prizeCards: Card[];
     energyAttachedThisTurn: boolean;
+    evolutionsThisTurn: number; // Max 2 per turn
     score: number; // Points from knockouts, first to 3 wins
 }

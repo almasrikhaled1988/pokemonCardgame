@@ -33,6 +33,7 @@ export const useGameStore = defineStore('game', () => {
     discardPile: [],
     prizeCards: [],
     energyAttachedThisTurn: false,
+    evolutionsThisTurn: 0,
     score: 0
   })
 
@@ -50,6 +51,7 @@ export const useGameStore = defineStore('game', () => {
     discardPile: [],
     prizeCards: [],
     energyAttachedThisTurn: false,
+    evolutionsThisTurn: 0,
     score: 0
   })
 
@@ -174,6 +176,7 @@ export const useGameStore = defineStore('game', () => {
 
     // Reset flags
     player.energyAttachedThisTurn = false
+    player.evolutionsThisTurn = 0
 
     // Switch turn
     currentTurn.value = currentTurn.value === 1 ? 2 : 1
@@ -280,6 +283,13 @@ export const useGameStore = defineStore('game', () => {
     // Set Starter Pokémon in Active position
     player1.value.active = createStarterPokemon(player1.value.element)
     player2.value.active = createStarterPokemon(player2.value.element)
+    // Starters are placed at turn 0 (before turn 1), so they can be evolved on turn 1
+    player1.value.active.turnPlayed = 0
+    player2.value.active.turnPlayed = 0
+
+    // Reset evolution counters
+    player1.value.evolutionsThisTurn = 0
+    player2.value.evolutionsThisTurn = 0
 
     // Start with 1 Energy in Energy Zone
     player1.value.energyZone = [createStarterEnergy(player1.value.element)]
@@ -363,8 +373,35 @@ export const useGameStore = defineStore('game', () => {
 
     // 1. Handle Pokemon
     if (card.type === 'pokemon') {
-      // If it's an evolution card, set pending evolution
+      // If it's an evolution card, check if there's a valid target on the board first
       if (card.stage === 'stage1' || card.stage === 'stage2') {
+        // Max 2 evolutions per turn
+        if (player.evolutionsThisTurn >= 2) {
+          addLog(`Already evolved 2 times this turn! (max 2 per turn)`)
+          soundService.play('error')
+          return
+        }
+        const allBoardPokemon = [
+          player.active,
+          ...player.bank
+        ].filter(Boolean)
+        const hasValidTarget = allBoardPokemon.some(
+          boardCard => boardCard?.name === card.evolvesFrom
+        )
+        if (!hasValidTarget) {
+          addLog(`Can't evolve! No ${card.evolvesFrom} on the board.`)
+          soundService.play('error')
+          return
+        }
+        // Check if at least one valid target was NOT played this turn
+        const hasSettledTarget = allBoardPokemon.some(
+          boardCard => boardCard?.name === card.evolvesFrom && boardCard?.turnPlayed !== turnNumber.value
+        )
+        if (!hasSettledTarget) {
+          addLog(`Can't evolve! ${card.evolvesFrom} was just played this turn.`)
+          soundService.play('error')
+          return
+        }
         pendingEvolution.value = card
         return
       }
@@ -374,6 +411,7 @@ export const useGameStore = defineStore('game', () => {
         // Set currentHp when placing
         card.currentHp = card.hp
         card.stage = card.stage || 'basic'
+        card.turnPlayed = turnNumber.value
         player.active = card
         player.hand.splice(cardIndex, 1)
         addLog(`${player.name} played ${card.name} as active.`)
@@ -386,6 +424,7 @@ export const useGameStore = defineStore('game', () => {
         // Set currentHp when placing
         card.currentHp = card.hp
         card.stage = card.stage || 'basic'
+        card.turnPlayed = turnNumber.value
         player.bank.push(card)
         player.hand.splice(cardIndex, 1)
         addLog(`${player.name} benched ${card.name}.`)
@@ -732,6 +771,22 @@ export const useGameStore = defineStore('game', () => {
       return
     }
 
+    // Can't evolve a Pokémon that was played this turn
+    if (targetCard.turnPlayed === turnNumber.value) {
+      addLog(`Can't evolve ${targetCard.name} — it was just played this turn!`)
+      soundService.play('error')
+      pendingEvolution.value = null
+      return
+    }
+
+    // Max 2 evolutions per turn
+    if (player.evolutionsThisTurn >= 2) {
+      addLog(`Already evolved 2 times this turn! (max 2 per turn)`)
+      soundService.play('error')
+      pendingEvolution.value = null
+      return
+    }
+
     // Find where target is
     let onBoard = false
     let isBank = false
@@ -757,6 +812,8 @@ export const useGameStore = defineStore('game', () => {
     const evolvedCard: Card = JSON.parse(JSON.stringify(evolver))
     evolvedCard.uniqueId = Math.random().toString(36).substr(2, 9)
     evolvedCard.attachedEnergy = targetCard.attachedEnergy || []
+    // Preserve the original turnPlayed so the evolution inherits the "settled" status
+    evolvedCard.turnPlayed = targetCard.turnPlayed
 
     // Calculate new currentHp (maintaining damage)
     const damage = (targetCard.hp || 0) - (targetCard.currentHp || 0)
@@ -774,6 +831,9 @@ export const useGameStore = defineStore('game', () => {
     if (handIndex !== -1) {
       player.hand.splice(handIndex, 1)
     }
+
+    // Increment evolution counter for this turn
+    player.evolutionsThisTurn++
 
     // Reset pending
     pendingEvolution.value = null

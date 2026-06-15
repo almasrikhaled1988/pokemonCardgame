@@ -127,14 +127,18 @@ export const playBotTurn = async (store: GameStore) => {
     // 5. Strategic Evolution
     let safety = 10
     while (safety-- > 0) {
+        // Max 2 evolutions per turn
+        if (p2.evolutionsThisTurn >= 2) break
+
         const evoCard = p2.hand.find(c => {
             if (c.type !== 'pokemon') return false
             if (c.stage !== 'stage1' && c.stage !== 'stage2') return false
-            return [p2.active, ...p2.bank].some(p => p && p.name === c.evolvesFrom)
+            // Must have a valid target that was NOT played this turn
+            return [p2.active, ...p2.bank].some(p => p && p.name === c.evolvesFrom && p.turnPlayed !== store.turnNumber)
         })
         if (!evoCard) break
 
-        const target = [p2.active, ...p2.bank].find(p => p && p.name === evoCard.evolvesFrom)
+        const target = [p2.active, ...p2.bank].find(p => p && p.name === evoCard.evolvesFrom && p.turnPlayed !== store.turnNumber)
         if (!target) break
 
         // Easy: 50% chance to skip evolution

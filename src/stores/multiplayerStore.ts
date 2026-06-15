@@ -475,6 +475,7 @@ export const useMultiplayerStore = defineStore('multiplayer', () => {
       p.discardPile = []
       p.prizeCards = []
       p.energyAttachedThisTurn = false
+      p.evolutionsThisTurn = 0
       p.score = 0
     }
     resetPlayer(gameStore.player1)

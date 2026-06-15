@@ -1,5 +1,5 @@
 <template>
-  <div 
+  <div
     v-if="uiStore.isTooltipVisible && uiStore.hoveredCard"
     class="card-tooltip"
     :style="tooltipStyle"
@@ -24,8 +24,8 @@
       <!-- Pokemon Details -->
       <div v-if="uiStore.hoveredCard.type === 'pokemon'" class="pokemon-details">
         <div class="attacks-list">
-          <div 
-            v-for="(attack, idx) in uiStore.hoveredCard.attacks" 
+          <div
+            v-for="(attack, idx) in uiStore.hoveredCard.attacks"
             :key="idx"
             class="attack-item"
           >
@@ -52,16 +52,17 @@
             {{ getElementEmoji(uiStore.hoveredCard.resistance) }}
           </div>
         </div>
-        
+
         <div v-if="uiStore.hoveredCard.statusEffects?.length" class="status-effects">
           Status: {{ uiStore.hoveredCard.statusEffects.join(', ') }}
         </div>
       </div>
 
       <!-- Trainer Details -->
-      <div v-else-if="uiStore.hoveredCard.category === 'trainer'" class="trainer-details">
+      <div v-else-if="uiStore.hoveredCard.category === 'trainer' || uiStore.hoveredCard.type === 'item' || uiStore.hoveredCard.type === 'supporter'" class="trainer-details">
+        <div class="trainer-type-badge">{{ uiStore.hoveredCard.type === 'supporter' ? '🧑‍🔬 Supporter' : '🎒 Item' }}</div>
         <div class="description">
-          {{ uiStore.hoveredCard.description }}
+          {{ uiStore.hoveredCard.description || 'Play this trainer card for its effect.' }}
         </div>
       </div>
     </div>
@@ -79,7 +80,7 @@ const tooltipStyle = computed(() => {
   // Offset slightly from cursor
   const x = uiStore.tooltipPosition.x + 15
   const y = uiStore.tooltipPosition.y + 15
-  
+
   // Basic boundary checking could be added here
   // For now, just position absolute
   return {
@@ -211,6 +212,17 @@ const cardTypeClass = computed(() => {
   font-style: italic;
   line-height: 1.4;
   color: #ddd;
+}
+
+.trainer-type-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #aaa;
+  margin-bottom: 6px;
+  padding: 2px 8px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 6px;
+  display: inline-block;
 }
 
 .status-effects {
