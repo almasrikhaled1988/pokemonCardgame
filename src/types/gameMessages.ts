@@ -142,6 +142,16 @@ export interface GuestDeckReadyMessage {
   payload: Record<string, never>
 }
 
+export interface RematchRequestMessage {
+  type: 'REMATCH_REQUEST'
+  payload: Record<string, never>
+}
+
+export interface RematchAcceptMessage {
+  type: 'REMATCH_ACCEPT'
+  payload: Record<string, never>
+}
+
 // ===== Union type =====
 
 export type HostMessage =
@@ -157,6 +167,8 @@ export type HostMessage =
   | ErrorMessage
   | PingMessage
   | PongMessage
+  | RematchRequestMessage
+  | RematchAcceptMessage
 
 export type GuestMessage =
   | SelectElementMessage
@@ -170,5 +182,7 @@ export type GuestMessage =
   | GuestDeckReadyMessage
   | PingMessage
   | PongMessage
+  | RematchRequestMessage
+  | RematchAcceptMessage
 
 export type GameMessage = HostMessage | GuestMessage

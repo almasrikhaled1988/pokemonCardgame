@@ -89,6 +89,7 @@ export const useMultiplayerStore = defineStore('multiplayer', () => {
       // Sync to gameStore so isMyTurn works
       const gameStore = useGameStore()
       gameStore.playerRole = 'guest'
+      gameStore.setGameMode('online')
       connectionStatus.value = 'connected'
 
       // Tell host we're here
@@ -112,14 +113,21 @@ export const useMultiplayerStore = defineStore('multiplayer', () => {
       // === Guest receives from Host ===
       case 'GAME_STATE_UPDATE':
         if (isGuest.value) {
+          // Make sure the guest is flagged as an online player so the
+          // board picks the correct "my" side when rendering.
+          if (gameStore.gameMode !== 'online') gameStore.setGameMode('online')
           applyRemoteState(msg.payload)
         }
         break
 
       case 'GAME_STARTED':
         if (isGuest.value) {
+          console.log('[MultiplayerStore] GAME_STARTED received. Switching guest to playing board.')
+          // Ensure game mode is set before applying state
+          gameStore.setGameMode('online')
           gameStore.gamePhase = 'playing'
           applyRemoteState(msg.payload)
+          console.log('[MultiplayerStore] After GAME_STARTED: phase=', gameStore.gamePhase, 'myActive=', gameStore.player2.active?.name, 'handCount=', gameStore.player2.hand.length)
         }
         break
 
@@ -258,6 +266,17 @@ export const useMultiplayerStore = defineStore('multiplayer', () => {
         }
         break
 
+      case 'REMATCH_REQUEST':
+        // Other side wants a rematch
+        rematchPending.value = true
+        break
+
+      case 'REMATCH_ACCEPT':
+        // Other side accepted our rematch request
+        rematchRequested.value = false
+        resetForRematch()
+        break
+
       default:
         console.log('[MultiplayerStore] Unhandled message type:', (msg as any).type)
     }
@@ -269,7 +288,7 @@ export const useMultiplayerStore = defineStore('multiplayer', () => {
   function broadcastState() {
     if (!isHost.value) return
     const gameStore = useGameStore()
-    
+
     const sanitized = sanitizeStateForGuest(
       gameStore.player1,
       gameStore.player2,
@@ -287,10 +306,39 @@ export const useMultiplayerStore = defineStore('multiplayer', () => {
   }
 
   /**
+   * Build a safe "face-down" placeholder card. Used to represent the
+   * opponent's hidden zones (hand/deck/prizes) by count without leaking
+   * real card data — and without ever being `null`, so the UI can never
+   * crash if it accidentally iterates one of these arrays.
+   */
+  function makeHiddenCards(count: number): any[] {
+    const out: any[] = []
+    for (let i = 0; i < count; i++) {
+      out.push({
+        id: `hidden-${i}`,
+        uniqueId: `hidden-${i}-${Math.random().toString(36).slice(2, 8)}`,
+        name: 'Hidden',
+        type: 'pokemon',
+        hp: 0,
+        currentHp: 0,
+        attacks: [],
+        attachedEnergy: [],
+        statusEffects: []
+      })
+    }
+    return out
+  }
+
+  /**
    * GUEST: Apply sanitized state from host.
    */
   function applyRemoteState(state: SanitizedGameState) {
     const gameStore = useGameStore()
+
+    // Defensive: make sure the guest is always flagged as an online guest
+    // so the board renders "my" (player2) side rather than the opponent.
+    if (gameStore.gameMode !== 'online') gameStore.setGameMode('online')
+    if (gameStore.playerRole !== 'guest') gameStore.playerRole = 'guest'
 
     gameStore.currentTurn = state.currentTurn
     gameStore.turnNumber = state.turnNumber
@@ -306,10 +354,12 @@ export const useMultiplayerStore = defineStore('multiplayer', () => {
     p1.discardPile = state.player1.discardPile
     p1.score = state.player1.score
     p1.energyAttachedThisTurn = state.player1.energyAttachedThisTurn
-    // Use counts for hidden zones — create placeholder arrays
-    p1.hand = new Array(state.player1.handCount).fill(null) as any
-    p1.deck = new Array(state.player1.deckCount).fill(null) as any
-    p1.prizeCards = new Array(state.player1.prizeCount).fill(null) as any
+    p1.element = state.player1.element
+    p1.name = state.player1.name
+    // Hidden zones → safe face-down placeholders (count preserved, never null)
+    p1.hand = makeHiddenCards(state.player1.handCount)
+    p1.deck = makeHiddenCards(state.player1.deckCount)
+    p1.prizeCards = makeHiddenCards(state.player1.prizeCount)
 
     // Update Player 2 (guest = self) — full data
     const p2 = gameStore.player2
@@ -319,9 +369,11 @@ export const useMultiplayerStore = defineStore('multiplayer', () => {
     p2.discardPile = state.player2.discardPile
     p2.score = state.player2.score
     p2.energyAttachedThisTurn = state.player2.energyAttachedThisTurn
-    if (state.player2.hand) p2.hand = state.player2.hand
-    if (state.player2.deck) p2.deck = state.player2.deck
-    if (state.player2.prizeCards) p2.prizeCards = state.player2.prizeCards
+    p2.element = state.player2.element
+    p2.name = state.player2.name
+    p2.hand = state.player2.hand ?? []
+    p2.deck = state.player2.deck ?? []
+    p2.prizeCards = state.player2.prizeCards ?? []
   }
 
   /**
@@ -331,7 +383,7 @@ export const useMultiplayerStore = defineStore('multiplayer', () => {
     const gameStore = useGameStore()
     gameStore.startGame()
 
-    const sanitized = sanitizeStateForGuest(
+    const buildSnapshot = () => sanitizeStateForGuest(
       gameStore.player1,
       gameStore.player2,
       gameStore.currentTurn,
@@ -341,10 +393,22 @@ export const useMultiplayerStore = defineStore('multiplayer', () => {
       gameStore.logs
     )
 
+    // Send the initial GAME_STARTED so the guest switches to the board.
     peerService.send({
       type: 'GAME_STARTED',
-      payload: sanitized
+      payload: buildSnapshot()
     })
+
+    // Safety net: the guest's board sometimes needs a fresh full-state
+    // update to render (the same update a host turn would send). Send a
+    // couple of follow-up snapshots so the guest never sits on a blank
+    // screen waiting for the host to act.
+    setTimeout(() => {
+      peerService.send({ type: 'GAME_STATE_UPDATE', payload: buildSnapshot() })
+    }, 300)
+    setTimeout(() => {
+      peerService.send({ type: 'GAME_STATE_UPDATE', payload: buildSnapshot() })
+    }, 900)
   }
 
   /**
@@ -363,6 +427,66 @@ export const useMultiplayerStore = defineStore('multiplayer', () => {
   function sendAction(msg: GameMessage) {
     if (!isGuest.value) return
     peerService.send(msg)
+  }
+
+  // Rematch state
+  const rematchRequested = ref(false)
+  const rematchPending = ref(false)
+
+  /**
+   * Request a rematch (either side can initiate).
+   */
+  function requestRematch() {
+    rematchRequested.value = true
+    peerService.send({ type: 'REMATCH_REQUEST', payload: {} })
+  }
+
+  /**
+   * Accept a rematch request.
+   */
+  function acceptRematch() {
+    rematchPending.value = false
+    peerService.send({ type: 'REMATCH_ACCEPT', payload: {} })
+    resetForRematch()
+  }
+
+  /**
+   * Reset game state for a rematch while keeping the connection alive.
+   */
+  function resetForRematch() {
+    const gameStore = useGameStore()
+    // Reset game state but keep connection and roles
+    gameStore.gamePhase = 'setup'
+    gameStore.winner = null
+    gameStore.currentTurn = 1
+    gameStore.turnNumber = 1
+    gameStore.logs = []
+    gameStore.pendingEvolution = null
+    gameStore.activeVfx = null
+
+    // Reset player states (keep names and element as null for re-selection)
+    const resetPlayer = (p: any) => {
+      p.element = null
+      p.deck = []
+      p.hand = []
+      p.active = null
+      p.bank = []
+      p.energyZone = []
+      p.discardPile = []
+      p.prizeCards = []
+      p.energyAttachedThisTurn = false
+      p.score = 0
+    }
+    resetPlayer(gameStore.player1)
+    resetPlayer(gameStore.player2)
+
+    // Reset deck confirmed flags
+    guestDeckConfirmed.value = false
+    hostDeckConfirmed.value = false
+    guestElement.value = null
+    hostElement.value = null
+    rematchRequested.value = false
+    rematchPending.value = false
   }
 
   /**
@@ -390,6 +514,8 @@ export const useMultiplayerStore = defineStore('multiplayer', () => {
     guestElement.value = null
     guestDeckConfirmed.value = false
     hostDeckConfirmed.value = false
+    rematchRequested.value = false
+    rematchPending.value = false
     // Also reset gameStore role
     const gameStore = useGameStore()
     gameStore.playerRole = null
@@ -406,6 +532,8 @@ export const useMultiplayerStore = defineStore('multiplayer', () => {
     hostElement,
     guestDeckConfirmed,
     hostDeckConfirmed,
+    rematchRequested,
+    rematchPending,
     // Computed
     isOnline,
     isHost,
@@ -418,6 +546,9 @@ export const useMultiplayerStore = defineStore('multiplayer', () => {
     sendAction,
     hostConfirmDeck,
     startOnlineGame,
-    handleMessage
+    handleMessage,
+    requestRematch,
+    acceptRematch,
+    resetForRematch
   }
 })

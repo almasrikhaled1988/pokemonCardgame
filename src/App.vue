@@ -56,13 +56,14 @@
           <template v-if="gameStore.gameMode !== 'online'">
             <div class="element-section">
               <!-- Player 1 -->
-              <div class="element-panel" :class="{ chosen: player1Element }">
+              <div class="element-panel" :class="{ chosen: player1Element }" v-if="gameStore.gameMode === 'single' || localSelectionStep === 1 || (localSelectionStep === 2 && player1Element)">
                 <div class="ep-header">
                   <span class="ep-tag">P1</span>
                   <span class="ep-name">Player 1</span>
                   <span v-if="player1Element" class="ep-chosen-mini">{{ getElementEmoji(player1Element) }}</span>
                 </div>
-                <div class="element-grid">
+                <!-- Show grid only if single mode OR it's player 1's turn to pick -->
+                <div class="element-grid" v-if="gameStore.gameMode === 'single' || localSelectionStep === 1">
                   <button
                     v-for="element in elements"
                     :key="element"
@@ -74,13 +75,17 @@
                     <span class="ec-label">{{ t(`elements.${element}`) }}</span>
                   </button>
                 </div>
+                <!-- When it's P2's turn, show chosen as hidden -->
+                <div v-if="gameStore.gameMode === 'local' && localSelectionStep === 2" class="element-hidden-badge">
+                  <span>🔒 Element chosen</span>
+                </div>
               </div>
 
               <!-- VS Badge -->
               <div class="vs-badge-cozy">VS</div>
 
               <!-- Player 2 / Bot -->
-              <div class="element-panel" :class="{ chosen: player2Element, bot: gameStore.gameMode === 'single' }">
+              <div class="element-panel" :class="{ chosen: player2Element, bot: gameStore.gameMode === 'single' }" v-if="gameStore.gameMode === 'single' || localSelectionStep === 2 || (localSelectionStep === 1 && false)">
                 <div class="ep-header">
                   <span class="ep-tag" :class="{ bot: gameStore.gameMode === 'single' }">
                     {{ gameStore.gameMode === 'single' ? 'AI' : 'P2' }}
@@ -88,7 +93,7 @@
                   <span class="ep-name">{{ gameStore.gameMode === 'single' ? 'Bot' : 'Player 2' }}</span>
                   <span v-if="player2Element" class="ep-chosen-mini">{{ getElementEmoji(player2Element) }}</span>
                 </div>
-                <div class="element-grid">
+                <div class="element-grid" v-if="gameStore.gameMode === 'single' || localSelectionStep === 2">
                   <button
                     v-for="element in elements"
                     :key="element"
@@ -123,10 +128,19 @@
               </div>
             </div>
 
+            <!-- Pass device prompt for local 2P -->
+            <div v-if="gameStore.gameMode === 'local' && localSelectionStep === 1 && player1Element" class="pass-device-prompt">
+              <p>✅ Player 1 has chosen their element.</p>
+              <button class="btn btn-primary pass-device-btn" @click="advanceToPlayer2Selection">
+                👋 Pass to Player 2 →
+              </button>
+            </div>
+
             <button
               class="start-btn-cozy"
               :disabled="!player1Element || !player2Element"
               @click="goToDeckBuilding"
+              v-if="gameStore.gameMode === 'single' || (gameStore.gameMode === 'local' && localSelectionStep === 2)"
             >
               <span v-if="player1Element && player2Element">Next: Build Decks →</span>
               <span v-else>Pick elements for both players</span>
@@ -163,9 +177,10 @@
                   <span class="ep-tag">👤</span>
                   <span class="ep-name">Opponent</span>
                 </div>
+                <!-- Don't reveal WHICH element the opponent picked — only that they're ready -->
                 <div v-if="opponentOnlineElement" class="opp-chosen">
-                  <span class="opp-chosen-emoji">{{ getElementEmoji(opponentOnlineElement) }}</span>
-                  <span class="opp-chosen-label">{{ t(`elements.${opponentOnlineElement}`) }}</span>
+                  <span class="opp-chosen-emoji">🎴</span>
+                  <span class="opp-chosen-label">Element chosen</span>
                   <span class="opp-chosen-ready">✅ Ready</span>
                 </div>
                 <div v-else class="opp-waiting">
@@ -201,6 +216,7 @@
         <!-- Online mode: only build your own deck -->
         <template v-if="isOnline">
           <DeckEditor
+            v-if="!myDeckConfirmed"
             :player-num="isHost ? 1 : 2"
             :player-label="isHost ? 'Your Deck (Host)' : 'Your Deck'"
             :element="isHost ? player1Element! : player2Element!"
@@ -209,6 +225,7 @@
           <div v-if="myDeckConfirmed" class="waiting-for-opponent">
             <div class="wait-spinner"></div>
             <span>Waiting for opponent to finish building...</span>
+            <span class="wait-hint">Game will start automatically once both players are ready</span>
           </div>
         </template>
         <!-- Local / Single -->
@@ -301,7 +318,31 @@
       <div v-else class="game-over-screen">
         <h1>🏆 {{ t('gameOver') }}</h1>
         <p class="winner-text">{{ t('wins', { winner }) }}</p>
-        <button class="btn btn-primary" @click="resetGame">{{ t('playAgain') }}</button>
+
+        <!-- Online mode: rematch flow -->
+        <template v-if="isOnline && mpStore.isOnline">
+          <div v-if="mpStore.rematchPending" class="rematch-section">
+            <p class="rematch-info">🎮 Opponent wants a rematch!</p>
+            <button class="btn btn-primary" @click="handleAcceptRematch">✅ Accept Rematch</button>
+            <button class="btn btn-secondary" @click="resetGame">🚪 Leave</button>
+          </div>
+          <div v-else-if="mpStore.rematchRequested" class="rematch-section">
+            <div class="waiting-indicator">
+              <div class="wait-spinner"></div>
+              <span>Waiting for opponent to accept...</span>
+            </div>
+            <button class="btn btn-secondary" @click="resetGame">🚪 Leave</button>
+          </div>
+          <div v-else class="rematch-section">
+            <button class="btn btn-primary" @click="handleRequestRematch">🔄 Rematch</button>
+            <button class="btn btn-secondary" @click="resetGame">🚪 Leave</button>
+          </div>
+        </template>
+
+        <!-- Local/single mode: simple play again -->
+        <template v-else>
+          <button class="btn btn-primary" @click="resetGame">{{ t('playAgain') }}</button>
+        </template>
       </div>
     </div>
     <CardTooltip />
@@ -340,6 +381,7 @@ function toggleMute() {
 const player1Element = ref<ElementType | null>(null)
 const player2Element = ref<ElementType | null>(null)
 const buildingStep = ref(1)
+const localSelectionStep = ref(1) // For local 2P: 1 = P1 picks, 2 = P2 picks
 
 const elements: ElementType[] = ['fire', 'water', 'grass', 'electric', 'psychic', 'fighting']
 
@@ -394,6 +436,10 @@ function handleOnlineMode() {
 function handleSetMode(mode: 'single' | 'local') {
   soundService.play('click')
   gameStore.setGameMode(mode)
+  // Reset element selections when switching modes
+  player1Element.value = null
+  player2Element.value = null
+  localSelectionStep.value = 1
 }
 
 function handleLobbyProceed() {
@@ -405,6 +451,7 @@ function handleLobbyProceed() {
 function handleLobbyBack() {
   gameStore.setGameMode('local')
   gameStore.gamePhase = 'setup'
+  localSelectionStep.value = 1
 }
 
 // Online element picking
@@ -558,7 +605,34 @@ function resetGame() {
   player1Element.value = null
   player2Element.value = null
   myDeckConfirmed.value = false
+  localSelectionStep.value = 1
   location.reload()
+}
+
+function handleRequestRematch() {
+  mpStore.requestRematch()
+}
+
+function handleAcceptRematch() {
+  mpStore.acceptRematch()
+  // Reset local UI state for rematch
+  player1Element.value = null
+  player2Element.value = null
+  myDeckConfirmed.value = false
+}
+
+// Watch for rematch reset (when remote side accepts our request)
+watch(() => gameStore.gamePhase, (newPhase, oldPhase) => {
+  if (oldPhase === 'ended' && newPhase === 'setup' && isOnline.value) {
+    // Rematch was accepted, reset local UI
+    player1Element.value = null
+    player2Element.value = null
+    myDeckConfirmed.value = false
+  }
+})
+
+function advanceToPlayer2Selection() {
+  localSelectionStep.value = 2
 }
 
 // Watch for bot turn
@@ -1549,5 +1623,109 @@ function discardSave() {
 /* Wrap mode buttons on smaller screens */
 .game-mode-selection {
   flex-wrap: wrap;
+}
+
+/* Rematch section */
+.rematch-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.rematch-info {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--de-text, #2d2620);
+  animation: pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.rematch-section .btn {
+  padding: 12px 28px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 0.9rem;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  transition: all 0.2s;
+  min-width: 180px;
+}
+
+.rematch-section .btn-secondary {
+  background: #f3d2a4;
+  color: #2d2620;
+}
+
+.rematch-section .btn-secondary:hover {
+  background: #eec48a;
+  transform: translateY(-1px);
+}
+
+.rematch-section .waiting-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #8a7a6a;
+  font-size: 0.85rem;
+}
+
+/* Pass device prompt (local 2P) */
+.pass-device-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  border: 2px solid #86efac;
+  border-radius: 16px;
+  text-align: center;
+}
+
+.pass-device-prompt p {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #15803d;
+  margin: 0;
+}
+
+.pass-device-btn {
+  background: linear-gradient(135deg, #5e548e, #7c5cb0) !important;
+  color: white !important;
+  padding: 12px 24px !important;
+  border-radius: 14px !important;
+  font-weight: 800 !important;
+  font-size: 0.9rem !important;
+  border: none !important;
+  cursor: pointer !important;
+  box-shadow: 0 4px 16px rgba(94,84,142,0.4) !important;
+  transition: all 0.2s !important;
+}
+
+.pass-device-btn:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(94,84,142,0.5) !important;
+}
+
+/* Element hidden badge */
+.element-hidden-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(94, 84, 142, 0.08);
+  border-radius: 12px;
+  color: #5e548e;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+/* Wait hint text */
+.wait-hint {
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.4);
+  margin-top: 4px;
 }
 </style>
