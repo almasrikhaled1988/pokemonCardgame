@@ -117,7 +117,8 @@ const POKEMON_IDS: Record<string, number> = {
     riolu: 447,
     lucario: 448,
     cubone: 104,
-    marowak: 105
+    marowak: 105,
+    sceptile: 254
 }
 
 /**
@@ -125,10 +126,11 @@ const POKEMON_IDS: Record<string, number> = {
  * Uses the PokeAPI's raw GitHub sprites repository
  */
 export function getPokemonImageUrl(name: string): string {
-    const pokemonId = POKEMON_IDS[name.toLowerCase()]
+    const normalizedName = normalizePokemonName(name)
+    const pokemonId = POKEMON_IDS[normalizedName]
 
     if (!pokemonId) {
-        console.warn(`Pokemon ID not found for: ${name}`)
+        console.warn(`Pokemon ID not found for: ${name} (normalized: ${normalizedName})`)
         return ''
     }
 
@@ -140,10 +142,11 @@ export function getPokemonImageUrl(name: string): string {
  * Get the sprite URL for a Pokemon (smaller, pixel art style)
  */
 export function getPokemonSpriteUrl(name: string): string {
-    const pokemonId = POKEMON_IDS[name.toLowerCase()]
+    const normalizedName = normalizePokemonName(name)
+    const pokemonId = POKEMON_IDS[normalizedName]
 
     if (!pokemonId) {
-        console.warn(`Pokemon ID not found for: ${name}`)
+        console.warn(`Pokemon ID not found for: ${name} (normalized: ${normalizedName})`)
         return ''
     }
 
@@ -155,7 +158,8 @@ export function getPokemonSpriteUrl(name: string): string {
  * Get the animated sprite URL for a Pokemon (if available)
  */
 export function getPokemonAnimatedSpriteUrl(name: string): string {
-    const pokemonId = POKEMON_IDS[name.toLowerCase()]
+    const normalizedName = normalizePokemonName(name)
+    const pokemonId = POKEMON_IDS[normalizedName]
 
     if (!pokemonId) {
         return ''
@@ -163,4 +167,17 @@ export function getPokemonAnimatedSpriteUrl(name: string): string {
 
     // Animated GIF sprites (Gen 5 style)
     return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/${pokemonId}.gif`
+}
+
+/**
+ * Normalize Pokemon names: strip V/VMAX/VSTAR suffixes and convert to lowercase.
+ * E.g. "Charizard V" → "charizard", "Pikachu VMAX" → "pikachu"
+ */
+function normalizePokemonName(name: string): string {
+    return name
+        .toLowerCase()
+        .replace(/\s*vmax$/i, '')
+        .replace(/\s*vstar$/i, '')
+        .replace(/\s*v$/i, '')
+        .trim()
 }

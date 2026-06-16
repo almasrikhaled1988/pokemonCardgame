@@ -373,8 +373,8 @@ export const useGameStore = defineStore('game', () => {
 
     // 1. Handle Pokemon
     if (card.type === 'pokemon') {
-      // If it's an evolution card, check if there's a valid target on the board first
-      if (card.stage === 'stage1' || card.stage === 'stage2') {
+      // If it's an evolution card (stage1, stage2, or VMAX), check for valid target
+      if (card.stage === 'stage1' || card.stage === 'stage2' || card.stage === 'VMAX') {
         // Max 2 evolutions per turn
         if (player.evolutionsThisTurn >= 2) {
           addLog(`Already evolved 2 times this turn! (max 2 per turn)`)
@@ -385,14 +385,21 @@ export const useGameStore = defineStore('game', () => {
           player.active,
           ...player.bank
         ].filter(Boolean)
-        const hasValidTarget = allBoardPokemon.some(
+        const validTargets = allBoardPokemon.filter(
           boardCard => boardCard?.name === card.evolvesFrom
         )
-        if (!hasValidTarget) {
+        if (validTargets.length === 0) {
           addLog(`Can't evolve! No ${card.evolvesFrom} on the board.`)
           soundService.play('error')
           return
         }
+        // If only one valid target, evolve automatically
+        if (validTargets.length === 1) {
+          pendingEvolution.value = card
+          evolvePokemon(validTargets[0]!)
+          return
+        }
+        // Multiple targets — let the player pick
         pendingEvolution.value = card
         return
       }
@@ -674,36 +681,56 @@ export const useGameStore = defineStore('game', () => {
     // 1. Move Active to Discard
     if (victim.active) {
       addLog(`${victim.active.name} was knocked out!`)
+      const isVCard = victim.active.isV === true
       victim.active.currentHp = 0
       victim.discardPile.push(victim.active)
       victim.active = null
       soundService.play('ko')
-    }
 
-    // 2. Attacker gains 1 point and draws a Prize Card
-    const attacker = currentPlayer.value
-    attacker.score += 1
+      // 2. Attacker gains points: 2 for V/VMAX, 1 for regular
+      const attacker = currentPlayer.value
+      const pointsGained = isVCard ? 2 : 1
+      attacker.score += pointsGained
 
-    // Draw prize card
-    if (attacker.prizeCards.length > 0) {
-      const prizeCard = attacker.prizeCards.shift()
-      if (prizeCard) {
-        attacker.hand.push(prizeCard)
-        addLog(`${attacker.name} drew a Prize Card!`)
-        soundService.play('prize')
+      if (isVCard) {
+        addLog(`${attacker.name} takes 2 Prize Cards! (Pokémon V/VMAX KO)`)
       }
-    }
 
-    console.log(`${attacker.name} scored! (${attacker.score}/3 points)`)
+      // Draw prize cards (1 for regular, 2 for V/VMAX)
+      for (let i = 0; i < pointsGained; i++) {
+        if (attacker.prizeCards.length > 0) {
+          const prizeCard = attacker.prizeCards.shift()
+          if (prizeCard) {
+            attacker.hand.push(prizeCard)
+            if (!isVCard || i === 0) {
+              addLog(`${attacker.name} drew a Prize Card!`)
+            }
+            soundService.play('prize')
+          }
+        }
+      }
 
-    // 3. Check Win Condition: First to 3 points wins
-    if (attacker.score >= 3) {
-      gamePhase.value = 'ended'
-      winner.value = attacker.name
-      // Play victory if the user won, otherwise defeat
-      const userIsAttacker = (gameMode.value === 'online' ? attacker.id === myPlayer.value.id : attacker.id === 1)
-      soundService.play(userIsAttacker ? 'victory' : 'defeat')
-      return
+      console.log(`${attacker.name} scored ${pointsGained}! (${attacker.score}/3 points)`)
+
+      // 3. Check Win Condition: First to 3 points wins
+      if (attacker.score >= 3) {
+        gamePhase.value = 'ended'
+        winner.value = attacker.name
+        const userIsAttacker = (gameMode.value === 'online' ? attacker.id === myPlayer.value.id : attacker.id === 1)
+        soundService.play(userIsAttacker ? 'victory' : 'defeat')
+        return
+      }
+    } else {
+      // No active to KO (shouldn't happen, but safety)
+      const attacker = currentPlayer.value
+      attacker.score += 1
+      if (attacker.score >= 3) {
+        gamePhase.value = 'ended'
+        winner.value = attacker.name
+        const userIsAttacker = (gameMode.value === 'online' ? attacker.id === myPlayer.value.id : attacker.id === 1)
+        soundService.play(userIsAttacker ? 'victory' : 'defeat')
+        return
+      }
     }
 
     // 4. Victim must promote Bench pokemon OR play from hand
@@ -721,6 +748,7 @@ export const useGameStore = defineStore('game', () => {
       if (!hasPokemonInHand) {
         // No bench, no active, no Pokemon in hand = total loss
         gamePhase.value = 'ended'
+        const attacker = currentPlayer.value
         winner.value = attacker.name
         const userIsAttacker = (gameMode.value === 'online' ? attacker.id === myPlayer.value.id : attacker.id === 1)
         soundService.play(userIsAttacker ? 'victory' : 'defeat')

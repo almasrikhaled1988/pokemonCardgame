@@ -1,4 +1,4 @@
-import { POKEMON_DATA, TRAINER_CARDS } from '../data/cards'
+import { POKEMON_DATA, TRAINER_CARDS, POKEMON_V_DATA } from '../data/cards'
 import type { Card, ElementType } from '../types'
 
 // Starter Pokemon for each element
@@ -59,6 +59,20 @@ export function createDeck(element: string, customPokemon?: Card[]): Card[] {
             pokemons.forEach(card => {
                 if (card.name === starterName) return
 
+                card.type = 'pokemon'
+                card.currentHp = card.hp
+                card.attachedEnergy = []
+                card.uniqueId = Math.random().toString(36).substr(2, 9)
+                deck.push(card)
+            })
+        }
+
+        // Add 1-2 V/VMAX cards for variety (if available for this element)
+        const vCards = POKEMON_V_DATA[element]
+        if (vCards) {
+            const vPool = JSON.parse(JSON.stringify(vCards)) as Card[]
+            const shuffledV = vPool.sort(() => Math.random() - 0.5).slice(0, 2)
+            shuffledV.forEach(card => {
                 card.type = 'pokemon'
                 card.currentHp = card.hp
                 card.attachedEnergy = []

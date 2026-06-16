@@ -344,8 +344,10 @@
           @dragstart="onDragStart($event, card)"
           @dragend="onDragEnd"
         >
-          <span class="cz-tag">
-            <template v-if="card.type === 'pokemon'">P</template>
+          <span class="cz-tag" :class="{ 'cz-tag-v': card.isV }">
+            <template v-if="card.isV && card.stage === 'VMAX'">VX</template>
+            <template v-else-if="card.isV">V</template>
+            <template v-else-if="card.type === 'pokemon'">P</template>
             <template v-else-if="card.type === 'energy'">⚡</template>
             <template v-else>T</template>
           </span>
@@ -362,8 +364,9 @@
           <span class="cz-name">{{ card.name }}</span>
           <span class="cz-meta">
             <template v-if="card.type === 'pokemon'">
-              {{ card.stage || 'basic' }} · {{ card.hp }}HP
+              {{ card.stage === 'V' ? 'V' : card.stage === 'VMAX' ? 'VMAX' : (card.stage || 'basic') }} · {{ card.hp }}HP
               <span v-if="card.evolvesFrom" class="cz-evo-hint">↑ {{ card.evolvesFrom }}</span>
+              <span v-if="card.isV" class="cz-v-warning">⚠️ 2pts on KO</span>
             </template>
             <template v-else-if="card.type === 'energy'">
               +1⚡
@@ -1379,6 +1382,17 @@ function handleImageError(e: Event) {
 .cozy-card.item .cz-tag,
 .cozy-card.supporter .cz-tag { background: var(--cb-accent); }
 
+/* V / VMAX badge — gold/rainbow gradient */
+.cozy-card .cz-tag.cz-tag-v {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #2d2620;
+  font-weight: 900;
+  box-shadow: 0 0 6px rgba(251, 191, 36, 0.5);
+  width: 20px;
+  height: 20px;
+  font-size: 0.55rem;
+}
+
 .cozy-card .cz-art {
   width: 100%;
   height: 80px;
@@ -1425,6 +1439,14 @@ function handleImageError(e: Event) {
   display: block;
   font-size: 0.5rem;
   color: var(--cb-accent);
+  font-weight: 700;
+  text-transform: none;
+}
+
+.cozy-card .cz-v-warning {
+  display: block;
+  font-size: 0.45rem;
+  color: #f59e0b;
   font-weight: 700;
   text-transform: none;
 }

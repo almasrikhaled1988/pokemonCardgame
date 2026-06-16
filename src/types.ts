@@ -28,13 +28,14 @@ export interface Card {
     currentHp?: number;
     attacks?: Attack[];
     attachedEnergy?: Card[];
-    stage?: 'basic' | 'stage1' | 'stage2';
+    stage?: 'basic' | 'stage1' | 'stage2' | 'V' | 'VMAX';
     evolvesFrom?: string;
     weakness?: ElementType;
     resistance?: ElementType;
     statusEffects?: StatusEffect[];
     ability?: Ability;
     turnPlayed?: number; // The turn number when this card was placed on the board
+    isV?: boolean;       // Pokémon V or VMAX — gives 2 points on KO
 
     // Trainer specific
     description?: string;

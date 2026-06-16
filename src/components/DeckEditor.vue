@@ -138,7 +138,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { POKEMON_DATA } from '../data/cards'
+import { POKEMON_DATA, POKEMON_V_DATA } from '../data/cards'
 import { getPokemonSpriteUrl } from '../utils/pokemonImages'
 import { soundService } from '../services/soundService'
 import type { Card, ElementType } from '../types'
@@ -157,26 +157,31 @@ const emit = defineEmits<{
 
 const maxSelection = 12
 const selectedPokemon = ref<Card[]>([])
-const activeFilter = ref<'all' | 'basic' | 'stage1' | 'stage2'>('all')
+const activeFilter = ref<'all' | 'basic' | 'stage1' | 'stage2' | 'V'>('all')
 
 const filters = [
   { value: 'all' as const, label: 'All' },
   { value: 'basic' as const, label: 'Basic' },
   { value: 'stage1' as const, label: 'Stage 1' },
   { value: 'stage2' as const, label: 'Stage 2' },
+  { value: 'V' as const, label: 'V / VMAX' },
 ]
 
 const availablePokemon = computed<Card[]>(() => {
-  return (POKEMON_DATA as any)[props.element] || []
+  const regular = (POKEMON_DATA as any)[props.element] || []
+  const vCards = (POKEMON_V_DATA as any)[props.element] || []
+  return [...regular, ...vCards]
 })
 
 const filteredPokemon = computed<Card[]>(() => {
   if (activeFilter.value === 'all') return availablePokemon.value
+  if (activeFilter.value === 'V') return availablePokemon.value.filter(p => p.stage === 'V' || p.stage === 'VMAX')
   return availablePokemon.value.filter(p => (p.stage || 'basic') === activeFilter.value)
 })
 
 function filterCount(filter: typeof activeFilter.value): number {
   if (filter === 'all') return availablePokemon.value.length
+  if (filter === 'V') return availablePokemon.value.filter(p => p.stage === 'V' || p.stage === 'VMAX').length
   return availablePokemon.value.filter(p => (p.stage || 'basic') === filter).length
 }
 
@@ -323,6 +328,8 @@ function stageLabel(stage: string | undefined) {
   if (!stage || stage === 'basic') return 'Basic'
   if (stage === 'stage1') return 'Stage 1'
   if (stage === 'stage2') return 'Stage 2'
+  if (stage === 'V') return '⭐ V'
+  if (stage === 'VMAX') return '⭐ VMAX'
   return stage
 }
 

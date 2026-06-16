@@ -127,3 +127,40 @@ export const TRAINER_CARDS = [
     { id: 't9', name: 'Energy Boost', type: 'item', description: 'Add 1 energy to your energy zone immediately' },
     { id: 't10', name: 'Gust of Wind', type: 'item', description: 'Force opponent to switch their active with a benched Pokémon' }
 ]
+
+// ===== Pokémon V & VMAX =====
+// V cards: High HP, strong attacks, basic stage, but give 2 points on KO
+// VMAX cards: Evolve from V, massive HP & damage, still give 2 points on KO
+
+export const POKEMON_V_DATA: Record<string, any[]> = {
+    fire: [
+        { id: 'fv1', name: 'Charizard V', hp: 130, element: 'fire', stage: 'V', isV: true, weakness: 'water', resistance: 'grass', attacks: [{ name: 'Fire Spin', damage: 50, energyCost: 2, description: 'Engulfs the foe in flames.' }, { name: 'Blaze Burst', damage: 90, energyCost: 4, description: 'A devastating burst of fire.' }] },
+        { id: 'fv1-max', name: 'Charizard VMAX', hp: 170, element: 'fire', stage: 'VMAX', isV: true, evolvesFrom: 'Charizard V', weakness: 'water', resistance: 'grass', attacks: [{ name: 'G-Max Wildfire', damage: 120, energyCost: 4, description: 'Burns everything in its path.' }] },
+        { id: 'fv2', name: 'Blaziken V', hp: 120, element: 'fire', stage: 'V', isV: true, weakness: 'water', resistance: 'grass', attacks: [{ name: 'Blaze Kick', damage: 60, energyCost: 3, description: 'A fiery kick.' }, { name: 'Inferno Rush', damage: 80, energyCost: 4 }] },
+    ],
+    water: [
+        { id: 'wv1', name: 'Blastoise V', hp: 130, element: 'water', stage: 'V', isV: true, weakness: 'electric', resistance: 'fire', attacks: [{ name: 'Hydro Tackle', damage: 50, energyCost: 2, description: 'Charges with water pressure.' }, { name: 'Grand Falls', damage: 90, energyCost: 4, description: 'A massive torrent.' }] },
+        { id: 'wv1-max', name: 'Blastoise VMAX', hp: 170, element: 'water', stage: 'VMAX', isV: true, evolvesFrom: 'Blastoise V', weakness: 'electric', resistance: 'fire', attacks: [{ name: 'G-Max Cannonade', damage: 120, energyCost: 4, description: 'Fires all cannons at once.' }] },
+        { id: 'wv2', name: 'Gyarados V', hp: 120, element: 'water', stage: 'V', isV: true, weakness: 'electric', resistance: 'fire', attacks: [{ name: 'Tyrannical Tail', damage: 60, energyCost: 3, description: 'Smashes with its tail.' }, { name: 'Hyper Beam V', damage: 80, energyCost: 4 }] },
+    ],
+    grass: [
+        { id: 'gv1', name: 'Venusaur V', hp: 130, element: 'grass', stage: 'V', isV: true, weakness: 'fire', resistance: 'water', attacks: [{ name: 'Pollen Bomb', damage: 50, energyCost: 2, description: 'Releases toxic pollen.' }, { name: 'Solar Crash', damage: 90, energyCost: 4, description: 'A devastating solar attack.' }] },
+        { id: 'gv1-max', name: 'Venusaur VMAX', hp: 170, element: 'grass', stage: 'VMAX', isV: true, evolvesFrom: 'Venusaur V', weakness: 'fire', resistance: 'water', attacks: [{ name: 'G-Max Vine Lash', damage: 120, energyCost: 4, description: 'Crushes with giant vines.' }] },
+        { id: 'gv2', name: 'Sceptile V', hp: 120, element: 'grass', stage: 'V', isV: true, weakness: 'fire', resistance: 'water', attacks: [{ name: 'Leaf Blade V', damage: 60, energyCost: 3, description: 'Slashes with sharp leaves.' }, { name: 'Jungle Edge', damage: 80, energyCost: 4 }] },
+    ],
+    electric: [
+        { id: 'ev1', name: 'Pikachu V', hp: 120, element: 'electric', stage: 'V', isV: true, weakness: 'grass', resistance: 'water', attacks: [{ name: 'Volt Tackle', damage: 50, energyCost: 2, description: 'Charges with electricity.' }, { name: 'Thunderbolt V', damage: 90, energyCost: 4, description: 'A massive electric blast.' }] },
+        { id: 'ev1-max', name: 'Pikachu VMAX', hp: 160, element: 'electric', stage: 'VMAX', isV: true, evolvesFrom: 'Pikachu V', weakness: 'grass', resistance: 'water', attacks: [{ name: 'G-Max Volt Crash', damage: 120, energyCost: 4, description: 'Maximum voltage discharge.' }] },
+        { id: 'ev2', name: 'Luxray V', hp: 120, element: 'electric', stage: 'V', isV: true, weakness: 'grass', resistance: 'water', attacks: [{ name: 'Fang Bolt', damage: 60, energyCost: 3, description: 'Bites with electric fangs.' }, { name: 'Wild Charge V', damage: 80, energyCost: 4 }] },
+    ],
+    psychic: [
+        { id: 'pv1', name: 'Mewtwo V', hp: 130, element: 'psychic', stage: 'V', isV: true, weakness: 'psychic', resistance: 'fighting', attacks: [{ name: 'Psycho Boost', damage: 50, energyCost: 2, description: 'A burst of psychic energy.' }, { name: 'Psystrike V', damage: 90, energyCost: 4, description: 'Pierces through the mind.' }] },
+        { id: 'pv1-max', name: 'Mewtwo VMAX', hp: 170, element: 'psychic', stage: 'VMAX', isV: true, evolvesFrom: 'Mewtwo V', weakness: 'psychic', resistance: 'fighting', attacks: [{ name: 'G-Max Psybreak', damage: 120, energyCost: 4, description: 'Shatters all mental barriers.' }] },
+        { id: 'pv2', name: 'Gardevoir V', hp: 120, element: 'psychic', stage: 'V', isV: true, weakness: 'psychic', resistance: 'fighting', attacks: [{ name: 'Moonbeam V', damage: 60, energyCost: 3, description: 'A mystical beam of light.' }, { name: 'Fairy Song', damage: 80, energyCost: 4 }] },
+    ],
+    fighting: [
+        { id: 'ftv1', name: 'Machamp V', hp: 130, element: 'fighting', stage: 'V', isV: true, weakness: 'psychic', resistance: 'electric', attacks: [{ name: 'Cross Chop V', damage: 50, energyCost: 2, description: 'Chops with both arms.' }, { name: 'Dynamic Punch', damage: 90, energyCost: 4, description: 'A devastating knockout punch.' }] },
+        { id: 'ftv1-max', name: 'Machamp VMAX', hp: 170, element: 'fighting', stage: 'VMAX', isV: true, evolvesFrom: 'Machamp V', weakness: 'psychic', resistance: 'electric', attacks: [{ name: 'G-Max Chi Strike', damage: 120, energyCost: 4, description: 'Focuses all fighting energy.' }] },
+        { id: 'ftv2', name: 'Lucario V', hp: 120, element: 'fighting', stage: 'V', isV: true, weakness: 'psychic', resistance: 'electric', attacks: [{ name: 'Aura Sphere V', damage: 60, energyCost: 3, description: 'A blast of pure aura.' }, { name: 'Close Combat V', damage: 80, energyCost: 4 }] },
+    ]
+}

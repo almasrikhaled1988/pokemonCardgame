@@ -550,7 +550,7 @@ function handlePlayCard(card: Card) {
   if (isOnline.value && mpStore.isGuest) {
     // Evolution cards: handle the "pick a target" UI locally on the guest,
     // then send the completed EVOLVE message with both IDs
-    if (card.type === 'pokemon' && (card.stage === 'stage1' || card.stage === 'stage2')) {
+    if (card.type === 'pokemon' && (card.stage === 'stage1' || card.stage === 'stage2' || card.stage === 'VMAX')) {
       // Max 2 evolutions per turn
       if (gameStore.player2.evolutionsThisTurn >= 2) {
         gameStore.logs.unshift(`[T${gameStore.turnNumber}] Already evolved 2 times this turn! (max 2 per turn)`)
@@ -562,12 +562,19 @@ function handlePlayCard(card: Card) {
         gameStore.player2.active,
         ...gameStore.player2.bank
       ].filter(Boolean)
-      const hasTarget = allBoard.some(b => b?.name === card.evolvesFrom)
-      if (!hasTarget) {
+      const validTargets = allBoard.filter(b => b?.name === card.evolvesFrom)
+      if (validTargets.length === 0) {
         gameStore.logs.unshift(`[T${gameStore.turnNumber}] Can't evolve! No ${card.evolvesFrom} on the board.`)
         soundService.play('error')
         return
       }
+      // If only one valid target, auto-evolve (send directly to host)
+      if (validTargets.length === 1) {
+        peerService.send({ type: 'EVOLVE', payload: { evolverUniqueId: card.uniqueId!, targetUniqueId: validTargets[0]!.uniqueId! } })
+        gameStore.player2.evolutionsThisTurn++
+        return
+      }
+      // Multiple targets — let the player pick
       gameStore.pendingEvolution = card
       return
     }

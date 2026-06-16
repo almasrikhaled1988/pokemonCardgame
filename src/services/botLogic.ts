@@ -132,7 +132,7 @@ export const playBotTurn = async (store: GameStore) => {
 
         const evoCard = p2.hand.find(c => {
             if (c.type !== 'pokemon') return false
-            if (c.stage !== 'stage1' && c.stage !== 'stage2') return false
+            if (c.stage !== 'stage1' && c.stage !== 'stage2' && c.stage !== 'VMAX') return false
             return [p2.active, ...p2.bank].some(p => p && p.name === c.evolvesFrom)
         })
         if (!evoCard) break
