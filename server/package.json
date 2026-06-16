@@ -1,0 +1,12 @@
+{
+  "name": "pokemon-lobby-server",
+  "version": "1.0.0",
+  "description": "WebSocket matchmaking lobby for Pokemon Card Game",
+  "main": "lobby.js",
+  "scripts": {
+    "start": "node lobby.js"
+  },
+  "dependencies": {
+    "ws": "^8.16.0"
+  }
+}

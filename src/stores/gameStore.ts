@@ -393,15 +393,6 @@ export const useGameStore = defineStore('game', () => {
           soundService.play('error')
           return
         }
-        // Check if at least one valid target was NOT played this turn
-        const hasSettledTarget = allBoardPokemon.some(
-          boardCard => boardCard?.name === card.evolvesFrom && boardCard?.turnPlayed !== turnNumber.value
-        )
-        if (!hasSettledTarget) {
-          addLog(`Can't evolve! ${card.evolvesFrom} was just played this turn.`)
-          soundService.play('error')
-          return
-        }
         pendingEvolution.value = card
         return
       }
@@ -768,14 +759,6 @@ export const useGameStore = defineStore('game', () => {
     if (targetCard.name !== evolver.evolvesFrom) {
       addLog(`${evolver.name} evolves from ${evolver.evolvesFrom}, not ${targetCard.name}.`)
       soundService.play('error')
-      return
-    }
-
-    // Can't evolve a Pokémon that was played this turn
-    if (targetCard.turnPlayed === turnNumber.value) {
-      addLog(`Can't evolve ${targetCard.name} — it was just played this turn!`)
-      soundService.play('error')
-      pendingEvolution.value = null
       return
     }
 

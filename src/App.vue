@@ -568,15 +568,6 @@ function handlePlayCard(card: Card) {
         soundService.play('error')
         return
       }
-      // Check if target was played this turn
-      const hasSettledTarget = allBoard.some(
-        b => b?.name === card.evolvesFrom && b?.turnPlayed !== gameStore.turnNumber
-      )
-      if (!hasSettledTarget) {
-        gameStore.logs.unshift(`[T${gameStore.turnNumber}] Can't evolve! ${card.evolvesFrom} was just played this turn.`)
-        soundService.play('error')
-        return
-      }
       gameStore.pendingEvolution = card
       return
     }
